@@ -93,13 +93,13 @@ def close_task(args, db, cursor):
     #         ") AND status=1 "
     #         "LIMIT 1")
     # else:
-    cursor.execute("UPDATE tasks SET status=0 WHERE id = ?", args.id)
+    cursor.execute("UPDATE tasks SET status=0 WHERE id = ?", (args.id,))
     db.commit()
 
 
 def delete_task(args, db, cursor):
     logging.info("Deleting task: " + args.id)
-    cursor.execute("DELETE FROM tasks WHERE id = ?", args.id)
+    cursor.execute("DELETE FROM tasks WHERE id = ?", (args.id,))
     db.commit()
 
 
