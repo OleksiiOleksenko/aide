@@ -21,11 +21,12 @@ def add_task(args, db, cursor):
 
     priority = args.priority
     if args.time != "00:00":
-        validate_time(args.time)
         priority += 100
 
-    cursor.execute("INSERT INTO tasks(name, priority, due_time, weight) VALUES (?, ?, ?, ?)",
-                   (args.name, priority, args.time, args.weight))
+    repeat = "+" + args.repeat if args.repeat else None
+
+    cursor.execute("INSERT INTO tasks(name, priority, due_time, weight, repeat_period) VALUES (?, ?, ?, ?, ?)",
+                   (args.name, priority, args.time, args.weight, repeat))
     db.commit()
 
 
@@ -34,8 +35,9 @@ def list_tasks(args, cursor):
     query_arguments = []
 
     if args.top:
-        query = "SELECT id, name, priority, due_time, status, weight FROM tasks WHERE " \
-                "priority=( SELECT MAX(priority) FROM tasks WHERE due_date=current_date AND status=1 ) AND status=1" \
+        query = "SELECT id, name, priority, due_time, status, weight FROM tasks " \
+                "WHERE status=1 AND due_time < current_time AND due_date = current_date " \
+                " ORDER BY priority DESC " \
                 " LIMIT 1"
     else:
         if args.date:
@@ -67,7 +69,6 @@ def modify_task(args, db, cursor):
         query_arguments.append(args.priority)
 
     if args.time:
-        validate_time(args.time)
         setters.append("time=?")
         query_arguments.append(args.time)
 
@@ -136,7 +137,7 @@ def print_tasks(tasks: list, verbose=True):
 
 def validate_time(time_string: str):
     try:
-        datetime.datetime.strptime(time_string, "%HH:%MM")
+        datetime.datetime.strptime(time_string, "%H:%M")
     except ValueError:
         raise ValueError("Incorrect time format, should be HH:MM")
 
