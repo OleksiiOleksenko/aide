@@ -1,0 +1,171 @@
+#!/usr/bin/env python3
+import datetime
+import logging
+import os
+import coloredlogs
+import sqlite3
+
+from arguments import get_arguments
+
+
+def set_logging(verbose=False):
+    os.environ['COLOREDLOGS_LOG_FORMAT'] = '%(levelname)-8s %(message)s'
+    coloredlogs.install(
+        level=logging.INFO if not verbose else logging.DEBUG,
+        datefmt="%m-%d %H:%M:%S"
+    )
+
+
+def add_task(args, db, cursor):
+    logging.info("Adding %s; priority %s; start time %s" % (args.name, args.priority, args.time))
+
+    priority = args.priority
+    if args.time != "00:00":
+        validate_time(args.time)
+        priority += 100
+
+    cursor.execute("INSERT INTO tasks(name, priority, due_time, weight) VALUES (?, ?, ?, ?)",
+                   (args.name, priority, args.time, args.weight))
+    db.commit()
+
+
+def list_tasks(args, cursor):
+    query = "SELECT id, name, priority, due_time, status, weight FROM tasks WHERE "
+    query_arguments = []
+
+    if args.top:
+        query = "SELECT id, name, priority, due_time, status, weight FROM tasks WHERE " \
+                "priority=( SELECT MAX(priority) FROM tasks WHERE due_date=current_date AND status=1 ) AND status=1" \
+                " LIMIT 1"
+    else:
+        if args.date:
+            query += "due_date=? "
+            query_arguments.append(args.date)
+        else:
+            query += "due_date=current_date "
+
+        if args.open:
+            query += "AND status=1 "
+
+    cursor.execute(query, query_arguments)
+    result = cursor.fetchall()
+    print_tasks(result, verbose=args.verbose)
+
+
+def modify_task(args, db, cursor):
+    logging.info("Modifying task: " + args.id)
+
+    setters = []
+    query_arguments = []
+
+    if args.name:
+        setters.append("name=?")
+        query_arguments.append(args.name)
+
+    if args.priority >= 0:
+        setters.append("priority=?")
+        query_arguments.append(args.priority)
+
+    if args.time:
+        validate_time(args.time)
+        setters.append("time=?")
+        query_arguments.append(args.time)
+
+    if args.weight >= 0:
+        setters.append("weight=?")
+        query_arguments.append(args.weight)
+
+    query = "UPDATE tasks SET " + " AND ".join(setters) + " WHERE id = ?"
+    query_arguments.append(args.id)
+
+    cursor.execute(query, query_arguments)
+    db.commit()
+
+
+def close_task(args, db, cursor):
+    logging.info("Closing task: " + args.id)
+
+    # if args.id == "99":
+    #     cursor.execute(
+    #         "UPDATE tasks SET status=0 "
+    #         "WHERE priority=( "
+    #             "SELECT MAX(priority) FROM tasks WHERE due_date=current_date AND status=1 "
+    #         ") AND status=1 "
+    #         "LIMIT 1")
+    # else:
+    cursor.execute("UPDATE tasks SET status=0 WHERE id = ?", args.id)
+    db.commit()
+
+
+def delete_task(args, db, cursor):
+    logging.info("Deleting task: " + args.id)
+    cursor.execute("DELETE FROM tasks WHERE id = ?", args.id)
+    db.commit()
+
+
+def calculate_total_weight(args, cursor):
+    query = "SELECT weight FROM tasks WHERE due_date=current_date "
+    query_arguments = []
+
+    result = cursor.execute(query, query_arguments)
+
+    total = 0.0
+    for row in result:
+        total += float(row[0])
+
+    print("Total weight:", total)
+
+
+def initialize(args, db, cursor):
+    pass
+
+
+def print_tasks(tasks: list, verbose=True):
+    if not tasks:
+        print("No open tasks")
+        return
+
+    if not verbose:
+        print(tasks[0][1])
+        return
+
+    for row in tasks:
+        print("{:<2} {} \n   Pr: {} | Due: {} | Status: {} | Weight: {}".format(
+            row[0], row[1], row[2], row[3], row[4], row[5]))
+
+
+def validate_time(time_string: str):
+    try:
+        datetime.datetime.strptime(time_string, "%HH:%MM")
+    except ValueError:
+        raise ValueError("Incorrect time format, should be HH:MM")
+
+
+def main():
+    args = get_arguments()
+    set_logging(args.verbose)
+
+    database_file = "/var/lib/aide/tasks.db"
+    db = sqlite3.connect(database_file)
+    cursor = db.cursor()
+
+    if args.subparser_name == 'add':
+        add_task(args, db, cursor)
+    elif args.subparser_name == 'list':
+        list_tasks(args, cursor)
+    elif args.subparser_name == 'mod':
+        modify_task(args, db, cursor)
+    elif args.subparser_name == 'close':
+        close_task(args, db, cursor)
+    elif args.subparser_name == 'delete':
+        delete_task(args, db, cursor)
+    elif args.subparser_name == 'total':
+        calculate_total_weight(args, cursor)
+    elif args.subparser_name == 'init':
+        initialize(args, db, cursor)
+
+    db.close()
+
+
+if __name__ == "__main__":
+    main()
