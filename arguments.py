@@ -152,19 +152,24 @@ def get_arguments():
     )
 
     # total weight
-    parser_total = subparsers.add_parser('total',
+    parser_report = subparsers.add_parser('report',
                                          help='Calculate a total weight of tasks. '
                                               'If no arguments specified - '
                                               'weight of all tasks today (both open and closed)')
-    parser_total.add_argument(
+    parser_report.add_argument(
         '-d', '--date',
         type=str,
         help="Total weight of tasks on a given date. Date format: YYYY-MM-DD"
     )
-    parser_total.add_argument(
+    parser_report.add_argument(
         '-o', '--open',
         action='store_true',
         help="Total weight of open tasks today"
+    )
+    parser_report.add_argument(
+        '-p', '--plot',
+        action='store_true',
+        help="Build a plot of productivity by days"
     )
 
     args = parser.parse_args()

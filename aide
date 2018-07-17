@@ -4,6 +4,8 @@ import logging
 import os
 import coloredlogs
 import sqlite3
+import matplotlib
+import matplotlib.pyplot as plt
 
 from arguments import get_arguments
 
@@ -114,15 +116,44 @@ def delete_task(args, db, cursor):
     db.commit()
 
 
-def calculate_total_weight(args, cursor):
-    query = "SELECT weight FROM tasks WHERE due_date=current_date "
+def report(args, cursor):
+    if args.plot:
+        cursor.execute('SELECT sum(weight),due_date FROM tasks WHERE status=0 GROUP BY due_date')
+        data = cursor.fetchall()
+
+        if len(data) <= 2:
+            logging.error("Not enough data to build a plot")
+            return
+
+        date_start = datetime.datetime.strptime(data[0][1], "%Y-%m-%d")
+        date_end = datetime.datetime.strptime(data[-1][1], "%Y-%m-%d")
+        dates = [(date_start + datetime.timedelta(days=x)).strftime("%Y-%m-%d") for x in range(0, (date_end - date_start).days + 1)]
+
+        weights = []
+        i = 0
+        for row in data:
+            while row[1] != dates[i]:
+                weights.append(0.0)
+                i += 1
+
+            weights.append(row[0])
+            i += 1
+
+        fig = plt.figure(figsize=(10, 1))
+        ax = fig.add_subplot(111)
+        ax.bar(dates, weights)
+        labels = ax.set_xticklabels(dates)
+        plt.setp(labels, rotation=90)
+        ax.set_aspect(3.)
+        plt.show()
+
+        return
+
+    query = "SELECT sum(weight) FROM tasks WHERE due_date=current_date GROUP BY due_date"
     query_arguments = []
 
-    result = cursor.execute(query, query_arguments)
-
-    total = 0.0
-    for row in result:
-        total += float(row[0])
+    result = cursor.execute(query, query_arguments).fetchone()
+    total = result[0] if result else 0.0
 
     print("Total weight:", total)
 
@@ -172,8 +203,8 @@ def main():
         close_task(args, db, cursor)
     elif args.subparser_name == 'delete':
         delete_task(args, db, cursor)
-    elif args.subparser_name == 'total':
-        calculate_total_weight(args, cursor)
+    elif args.subparser_name == 'report':
+        report(args, cursor)
     elif args.subparser_name == 'init':
         initialize(args, db, cursor)
 
