@@ -87,6 +87,12 @@ def modify_task(args, db, cursor):
     db.commit()
 
 
+def postpone_task(args, db, cursor):
+    logging.info("Postponing task: " + args.id)
+    cursor.execute("UPDATE tasks SET due_date = date(due_date, ?) WHERE id = ?", ("+" + args.interval, args.id))
+    db.commit()
+
+
 def close_task(args, db, cursor):
     logging.info("Closing task: " + args.id)
 
@@ -160,6 +166,8 @@ def main():
         list_tasks(args, cursor)
     elif args.subparser_name == 'mod':
         modify_task(args, db, cursor)
+    elif args.subparser_name == 'postpone':
+        postpone_task(args, db, cursor)
     elif args.subparser_name == 'close':
         close_task(args, db, cursor)
     elif args.subparser_name == 'delete':

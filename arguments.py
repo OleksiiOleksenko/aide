@@ -52,7 +52,7 @@ def get_arguments():
     )
     parser_add.add_argument(
         '-r', '--repeat',
-        type=validate_repeat_period,
+        type=validate_time_period,
         help="Repetition period. Format examples: "
         "'1 years' "
         "'12 months' "
@@ -111,8 +111,25 @@ def get_arguments():
 
     parser_mod.add_argument(
         '-r', '--repeat',
-        type=validate_repeat_period,
+        type=validate_time_period,
         help="Repetition period. Format examples: "
+        "'1 years' "
+        "'12 months' "
+        "'123 days' "
+    )
+
+    # postponing tasks
+    parser_postpone = subparsers.add_parser('postpone', help='Postpone the task by a period')
+    parser_postpone.add_argument(
+        'id',
+        type=str,
+        help="ID of the task to close"
+    )
+
+    parser_postpone.add_argument(
+        'interval',
+        type=validate_time_period,
+        help="Time interval. Format examples: "
         "'1 years' "
         "'12 months' "
         "'123 days' "
@@ -162,7 +179,7 @@ def validate_time(time_string: str):
     return time_string
 
 
-def validate_repeat_period(date_string: str):
+def validate_time_period(date_string: str):
     pattern = r"\d{1,3} (days|months|years)"
     result = re.search(pattern, date_string)
 
