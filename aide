@@ -76,6 +76,10 @@ def modify_task(args, db, cursor):
         setters.append("weight=?")
         query_arguments.append(args.weight)
 
+    if args.repeat:
+        setters.append("repeat_period=?")
+        query_arguments.append("+" + args.repeat)
+
     query = "UPDATE tasks SET " + " AND ".join(setters) + " WHERE id = ?"
     query_arguments.append(args.id)
 

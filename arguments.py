@@ -100,7 +100,6 @@ def get_arguments():
     parser_mod.add_argument(
         '-t', '--time',
         type=validate_time,
-        default="",
         help="Start time of the task. Format HH:MM"
     )
     parser_mod.add_argument(

@@ -17,6 +17,7 @@ sqlite3 /var/lib/task/tasks.db
 
 ```bash
 alias tl="aide list -t"
+alias tla="aide list -o"
 alias ta="aide add"
 alias cl="aide close"
 ```
