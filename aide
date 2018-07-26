@@ -41,20 +41,32 @@ def list_tasks(args, cursor):
     query = "SELECT id, name, priority, strftime('%H:%M', due_time, 'localtime'), status, weight FROM tasks WHERE "
     query_arguments = []
 
+    # parametrize a query
     if args.top:
         query = "SELECT id, name, priority, strftime('%H:%M', due_time, 'localtime'), status, weight FROM tasks " \
                 "WHERE status=1 AND (due_time < current_time OR due_time IS NULL) AND due_date = current_date " \
                 " ORDER BY priority DESC " \
                 " LIMIT 1"
     else:
+        query = "SELECT id, name, priority, due_time, status, weight FROM tasks WHERE "
+        if args.open:
+            query += "status=1 AND "
+
         if args.date:
             query += "due_date=? "
             query_arguments.append(args.date)
         else:
+            query_overdue = query + "due_date<current_date "
             query += "due_date=current_date "
 
-        if args.open:
-            query += "AND status=1 "
+    # run the queries
+    if not args.date and not args.top:
+        cursor.execute(query_overdue, query_arguments)
+        result = cursor.fetchall()
+        if result:
+            logging.info("Overdue tasks:")
+            print_tasks(result, verbose=args.verbose)
+            logging.info("Today tasks:")
 
     cursor.execute(query, query_arguments)
     result = cursor.fetchall()
@@ -118,6 +130,11 @@ def close_task(args, db, cursor):
     cursor.execute("UPDATE tasks SET status=0 WHERE id = ?", (args.id,))
     db.commit()
 
+    logging.info("Next task:")
+    args.top = True
+    args.date = True
+    list_tasks(args, cursor)
+
 
 def delete_task(args, db, cursor):
     logging.info("Deleting task: " + args.id)
@@ -170,7 +187,7 @@ def report(args, cursor):
 
 def print_tasks(tasks: list, verbose=True):
     if not tasks:
-        print("No open tasks")
+        logging.info("No open tasks")
         return
 
     if not verbose:
