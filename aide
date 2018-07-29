@@ -7,6 +7,7 @@ import sqlite3
 import matplotlib.pyplot as plt
 
 from arguments import get_arguments
+from skill import train
 
 
 def set_logging(verbose=False):
@@ -102,12 +103,6 @@ def modify_task(args, db, cursor):
     query_arguments.append(args.id)
 
     cursor.execute(query, query_arguments)
-    db.commit()
-
-
-def postpone_task(args, db, cursor):
-    logging.info("Postponing task: " + args.id)
-    cursor.execute("UPDATE tasks SET due_date = date(due_date, ?) WHERE id = ?", ("+" + args.interval, args.id))
     db.commit()
 
 
@@ -259,6 +254,8 @@ def main():
         add_note(args, db, cursor)
     elif args.subparser_name == 'report':
         report(args, cursor)
+    elif args.subparser_name == 'train':
+        train(args, db, cursor)
 
     db.close()
 

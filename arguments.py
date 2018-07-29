@@ -183,6 +183,22 @@ def get_arguments():
              "Default: current date"
     )
 
+    # RPG extension
+    parser_train = subparsers.add_parser('train',
+                                        help='tbd')
+    parser_train.add_argument(
+        'id',
+        nargs="?",
+        type=str,
+        help="tbd"
+    )
+
+    parser_train.add_argument(
+        '-l', '--list',
+        action='store_true',
+        help='tbd'
+    )
+
     args = parser.parse_args()
     return args
 
