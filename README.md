@@ -4,6 +4,16 @@
 sudo ln -s `pwd`/aide /usr/bin/aide
 ```
 
+Create a minimal config file:
+
+```bash
+vim ~/.aide.conf
+
+{
+  "db_path": "/var/lib/aide/tasks.db", # could be any path
+}
+```
+
 ## Setting up a DB
 
 ```bash
