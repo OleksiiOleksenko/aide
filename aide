@@ -81,6 +81,10 @@ def modify_task(args, db, cursor):
         setters.append("repeat_period=?")
         query_arguments.append("+" + args.repeat)
 
+    if args.date:
+        date = relative_date_to_sql_query(args.date)
+        setters.append("due_date=" + date)
+
     query = "UPDATE tasks SET " + " AND ".join(setters) + " WHERE id = ?"
     query_arguments.append(args.id)
 
@@ -172,11 +176,17 @@ def print_tasks(tasks: list, verbose=True):
             row[0], row[1], row[2], row[3], row[4], row[5]))
 
 
-def validate_time(time_string: str):
-    try:
-        datetime.datetime.strptime(time_string, "%H:%M")
-    except ValueError:
-        raise ValueError("Incorrect time format, should be HH:MM")
+def relative_date_to_sql_query(date: str):
+    if date[0] == "+":
+        return "date('now', '" + date + "')"
+
+    if date == "today":
+        return "date('now')"
+
+    if date == "tomorrow":
+        return "date('now', '+1 day')"
+
+    return "date('" + date + "')"
 
 
 def main():
@@ -193,8 +203,6 @@ def main():
         list_tasks(args, cursor)
     elif args.subparser_name == 'mod':
         modify_task(args, db, cursor)
-    elif args.subparser_name == 'postpone':
-        postpone_task(args, db, cursor)
     elif args.subparser_name == 'close':
         close_task(args, db, cursor)
     elif args.subparser_name == 'delete':
