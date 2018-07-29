@@ -26,29 +26,24 @@ def add_task(args, db, cursor):
 
     repeat = "+" + args.repeat if args.repeat else None
 
-    cursor.execute("INSERT INTO tasks(name, priority, due_time, weight, repeat_period) VALUES ("
-                   "?, "
-                   "?, "
-                   # this ugly line is conversion from local time to utc; I couldn't make it work with cleaner methods
-                   "time(strftime('%s', ?) + strftime('%s', 'now') - strftime('%s', 'now', 'localtime'), 'unixepoch'), "
-                   "?, "
-                   "?)",
+    cursor.execute("INSERT INTO tasks(name, priority, due_time, weight, repeat_period) VALUES "
+                   "(?, ?, " + local_to_utc("?") + ", ?, ?)",
                    (args.name, priority, args.time, args.weight, repeat))
     db.commit()
 
 
 def list_tasks(args, cursor):
-    query = "SELECT id, name, priority, strftime('%H:%M', due_time, 'localtime'), status, weight FROM tasks WHERE "
+    query = "SELECT id, name, priority, " + utc_to_local("due_time") + ", status, weight FROM tasks WHERE "
     query_arguments = []
 
     # parametrize a query
     if args.top:
-        query = "SELECT id, name, priority, strftime('%H:%M', due_time, 'localtime'), status, weight FROM tasks " \
+        query = "SELECT id, name, priority, " + utc_to_local("due_time") + ", status, weight FROM tasks " \
                 "WHERE status=1 AND (due_time < current_time OR due_time IS NULL) AND due_date = current_date " \
                 " ORDER BY priority DESC " \
                 " LIMIT 1"
     else:
-        query = "SELECT id, name, priority, due_time, status, weight FROM tasks WHERE "
+        query = "SELECT id, name, priority, " + utc_to_local("due_time") + ", status, weight FROM tasks WHERE "
         if args.open:
             query += "status=1 AND "
 
@@ -211,6 +206,18 @@ def relative_date_to_sql_query(date: str):
         return "date('now', '+1 day')"
 
     return "date('" + date + "')"
+
+
+# SQLite doesn't handle daylight saving properly
+# The following 2 functions bypass this limitation
+def utc_to_local(time: str):
+    return "strftime('%H:%M', " \
+           "    strftime('%s', " + time + ") + strftime('%s', 'now', 'localtime') - strftime('%s', 'now'), 'unixepoch')"
+
+
+def local_to_utc(time: str):
+    return "strftime('%H:%M', " \
+           "    strftime('%s', " + time + ") + strftime('%s', 'now') - strftime('%s', 'now', 'localtime'), 'unixepoch')"
 
 
 def main():
