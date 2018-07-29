@@ -70,7 +70,7 @@ def modify_task(args, db, cursor):
         query_arguments.append(args.priority)
 
     if args.time:
-        setters.append("time=?")
+        setters.append("due_time=?")
         query_arguments.append(args.time)
 
     if args.weight >= 0:
