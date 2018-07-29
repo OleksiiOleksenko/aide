@@ -126,7 +126,8 @@ def report(args, cursor):
 
         date_start = datetime.datetime.strptime(data[0][1], "%Y-%m-%d")
         date_end = datetime.datetime.strptime(data[-1][1], "%Y-%m-%d")
-        dates = [(date_start + datetime.timedelta(days=x)).strftime("%Y-%m-%d") for x in range(0, (date_end - date_start).days + 1)]
+        dates = [(date_start + datetime.timedelta(days=x)).strftime("%Y-%m-%d") for x in
+                 range(0, (date_end - date_start).days + 1)]
 
         weights = []
         i = 0
@@ -155,10 +156,6 @@ def report(args, cursor):
     total = result[0] if result else 0.0
 
     print("Total weight:", total)
-
-
-def initialize(args, db, cursor):
-    pass
 
 
 def print_tasks(tasks: list, verbose=True):
@@ -204,8 +201,6 @@ def main():
         delete_task(args, db, cursor)
     elif args.subparser_name == 'report':
         report(args, cursor)
-    elif args.subparser_name == 'init':
-        initialize(args, db, cursor)
 
     db.close()
 
