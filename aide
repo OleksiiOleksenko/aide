@@ -21,23 +21,29 @@ def add_task(args, db, cursor):
     logging.info("Adding %s; priority %s; start time %s" % (args.name, args.priority, args.time))
 
     priority = args.priority
-    if args.time != "00:00":
+    if args.time:
         priority += 100
 
     repeat = "+" + args.repeat if args.repeat else None
 
-    cursor.execute("INSERT INTO tasks(name, priority, due_time, weight, repeat_period) VALUES (?, ?, ?, ?, ?)",
+    cursor.execute("INSERT INTO tasks(name, priority, due_time, weight, repeat_period) VALUES ("
+                   "?, "
+                   "?, "
+                   # this ugly line is conversion from local time to utc; I couldn't make it work with cleaner methods
+                   "time(strftime('%s', ?) + strftime('%s', 'now') - strftime('%s', 'now', 'localtime'), 'unixepoch'), "
+                   "?, "
+                   "?)",
                    (args.name, priority, args.time, args.weight, repeat))
     db.commit()
 
 
 def list_tasks(args, cursor):
-    query = "SELECT id, name, priority, due_time, status, weight FROM tasks WHERE "
+    query = "SELECT id, name, priority, strftime('%H:%M', due_time, 'localtime'), status, weight FROM tasks WHERE "
     query_arguments = []
 
     if args.top:
-        query = "SELECT id, name, priority, due_time, status, weight FROM tasks " \
-                "WHERE status=1 AND due_time < time(current_time, 'localtime') AND due_date = current_date " \
+        query = "SELECT id, name, priority, strftime('%H:%M', due_time, 'localtime'), status, weight FROM tasks " \
+                "WHERE status=1 AND (due_time < current_time OR due_time IS NULL) AND due_date = current_date " \
                 " ORDER BY priority DESC " \
                 " LIMIT 1"
     else:
@@ -172,8 +178,9 @@ def print_tasks(tasks: list, verbose=True):
         return
 
     for row in tasks:
-        print("{:<2} {} \n   Pr: {} | Due: {} | Status: {} | Weight: {}".format(
-            row[0], row[1], row[2], row[3], row[4], row[5]))
+        due = row[3] if row[3] else "--:--"
+        print("{:<2} | Pr: {:<3} | Status: {} | Weight: {:<4} | Due: {} | {}".format(
+            row[0], row[2], row[4], row[5], due, row[1]))
 
 
 def relative_date_to_sql_query(date: str):
