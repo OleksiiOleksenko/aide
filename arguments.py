@@ -134,6 +134,7 @@ def get_arguments():
     parser_close.add_argument(
         'id',
         type=str,
+        nargs='?',
         help="ID of the task to close"
     )
 

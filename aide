@@ -9,6 +9,14 @@ import matplotlib.pyplot as plt
 from arguments import get_arguments
 
 
+def set_logging(verbose=False):
+    logging.basicConfig(
+        format='[%(levelname)s] %(message)s',
+        level=logging.INFO if not verbose else logging.DEBUG,
+        datefmt="%m-%d %H:%M:%S"
+    )
+
+
 def add_task(args, db, cursor):
     logging.info("Adding %s; priority %s; start time %s" % (args.name, args.priority, args.time))
 
@@ -104,17 +112,18 @@ def postpone_task(args, db, cursor):
 
 
 def close_task(args, db, cursor):
-    logging.info("Closing task: " + args.id)
+    if args.id:
+        id_ = args.id
+    else:
+        query = "SELECT id, name, priority, %s, status, weight FROM tasks " \
+                "WHERE status=1 AND (due_time < current_time OR due_time IS NULL) AND due_date = current_date " \
+                " ORDER BY priority DESC " \
+                " LIMIT 1" % utc_to_local("due_time")
+        cursor.execute(query)
+        id_ = str(cursor.fetchone()[0])
+    logging.info("Closing task: " + id_)
 
-    # if args.id == "99":
-    #     cursor.execute(
-    #         "UPDATE tasks SET status=0 "
-    #         "WHERE priority=( "
-    #             "SELECT MAX(priority) FROM tasks WHERE due_date=current_date AND status=1 "
-    #         ") AND status=1 "
-    #         "LIMIT 1")
-    # else:
-    cursor.execute("UPDATE tasks SET status=0 WHERE id = ?", (args.id,))
+    cursor.execute("UPDATE tasks SET status=0 WHERE id = ?", (id_,))
     db.commit()
 
     logging.info("Next task:")
@@ -228,6 +237,7 @@ def read_configuration():
 
 
 def main():
+    set_logging()
     args = get_arguments()
     config = read_configuration()
 
