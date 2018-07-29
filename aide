@@ -129,6 +129,15 @@ def delete_task(args, db, cursor):
     db.commit()
 
 
+def add_note(args, db, cursor):
+    if args.date:
+        cursor.execute("INSERT INTO notes(date, text) VALUES (?, ?)", (args.date, args.text))
+    else:
+        cursor.execute("INSERT INTO notes(date, text) VALUES (date('now'), ?)", (args.text,))
+    db.commit()
+    logging.info("Note added")
+
+
 def report(args, cursor):
     if args.plot:
         cursor.execute('SELECT sum(weight),due_date FROM tasks WHERE status=0 GROUP BY due_date')
@@ -236,6 +245,8 @@ def main():
         close_task(args, db, cursor)
     elif args.subparser_name == 'delete':
         delete_task(args, db, cursor)
+    elif args.subparser_name == 'note':
+        add_note(args, db, cursor)
     elif args.subparser_name == 'report':
         report(args, cursor)
 

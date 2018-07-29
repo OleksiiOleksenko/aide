@@ -145,7 +145,7 @@ def get_arguments():
         help="ID of the task to delete"
     )
 
-    # total weight
+    # reporting
     parser_report = subparsers.add_parser('report',
                                           help='Calculate a total weight of tasks. '
                                                'If no arguments specified - '
@@ -166,6 +166,22 @@ def get_arguments():
         help="Build a plot of productivity by days"
     )
 
+    # notes
+    parser_note = subparsers.add_parser('note',
+                                        help='Add a note for a given day')
+    parser_note.add_argument(
+        'text',
+        type=str,
+        help="The text of the note"
+    )
+
+    parser_note.add_argument(
+        '-d', '--date',
+        type=validate_date,
+        help="Associate the note with a date."
+             "Default: current date"
+    )
+
     args = parser.parse_args()
     return args
 
@@ -180,6 +196,15 @@ def validate_time(time_string: str):
 
 def validate_time_period(date_string: str):
     pattern = r"\d{1,3} (days|months|years)"
+    result = re.search(pattern, date_string)
+
+    if not result:
+        raise ArgumentTypeError("Incorrect time format, should match " + pattern)
+    return date_string
+
+
+def validate_date(date_string: str):
+    pattern = r"\d{4}-(0[1-9]|1[012])-([0-2]\d|3[0-1])"
     result = re.search(pattern, date_string)
 
     if not result:
