@@ -199,6 +199,13 @@ def get_arguments():
         help='tbd'
     )
 
+    parser_train.add_argument(
+        '-c', '--claim',
+        type=int,
+        default=0,
+        help='tbd'
+    )
+
     args = parser.parse_args()
     return args
 

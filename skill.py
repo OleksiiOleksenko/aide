@@ -11,6 +11,19 @@ def train(args, db, cursor: sqlite3.Cursor):
             print("{:<3}: {:<2} | {:<2} | {}".format(t[0], t[1], t[2], t[3]))
         return
 
+    if args.claim:
+        cursor.execute("SELECT name, price FROM awards WHERE id = ?", (args.claim,))
+        award = cursor.fetchone()
+        logging.info("{} costed you {} gold".format(award[0], award[1]))
+
+        cursor.execute("UPDATE character SET gold = gold - ? WHERE id = 1", (award[1],))
+        db.commit()
+
+        cursor.execute("SELECT gold FROM character WHERE id = 1")
+        logging.info("Now you have " + str(cursor.fetchone()[0]) + " gold")
+
+        return
+
     cursor.execute("SELECT name, xp, gold_reward, trained_skill FROM trainers WHERE id = ?", (args.id,))
     trainer = cursor.fetchone()
     if not trainer:
@@ -45,3 +58,7 @@ def train(args, db, cursor: sqlite3.Cursor):
         cursor.execute("UPDATE skill SET xp = ? WHERE id = ?", (skill_xp, trainer[3]))
 
     db.commit()
+
+
+def award(args, db, cursor: sqlite3.Cursor):
+    pass
