@@ -4,6 +4,7 @@ import logging
 import json
 import os
 import sqlite3
+
 import matplotlib.pyplot as plt
 
 from arguments import get_arguments
@@ -109,14 +110,20 @@ def modify_task(args, db, cursor):
 def close_task(args, db, cursor):
     if args.id:
         id_ = args.id
+        cursor.execute("SELECT name FROM tasks WHERE id = ?", (id_,))
+        name = cursor.fetchone()[0]
     else:
-        query = "SELECT id, name, priority, %s, status, weight FROM tasks " \
-                "WHERE status=1 AND (due_time < current_time OR due_time IS NULL) AND due_date = current_date " \
-                " ORDER BY priority DESC " \
-                " LIMIT 1" % utc_to_local("due_time")
-        cursor.execute(query)
-        id_ = str(cursor.fetchone()[0])
-    logging.info("Closing task: " + id_)
+        cursor.execute("SELECT id, name FROM tasks "
+                       "WHERE status=1 AND (due_time < current_time OR due_time IS NULL) AND due_date = current_date "
+                       " ORDER BY priority DESC "
+                       " LIMIT 1")
+        task = cursor.fetchone()
+        id_ = task[0]
+        name = task[1]
+        if not ask_confirmation("Do you want to close \"%s\"?" % name):
+            return
+
+    logging.info("Closing task: " + name)
 
     cursor.execute("UPDATE tasks SET status=0 WHERE id = ?", (id_,))
     db.commit()
@@ -229,6 +236,39 @@ def read_configuration():
     with open(os.path.expanduser("~/.aide.conf")) as f:
         config = json.load(f)
     return config
+
+
+def ask_confirmation(question, default="yes"):
+    """Ask a yes/no question via raw_input() and return their answer.
+
+    "question" is a string that is presented to the user.
+    "default" is the presumed answer if the user just hits <Enter>.
+        It must be "yes" (the default), "no" or None (meaning
+        an answer is required of the user).
+
+    The "answer" return value is True for "yes" or False for "no".
+    """
+    valid = {"yes": True, "y": True, "ye": True,
+             "no": False, "n": False}
+    if default is None:
+        prompt = " [y/n] "
+    elif default == "yes":
+        prompt = " [Y/n] "
+    elif default == "no":
+        prompt = " [y/N] "
+    else:
+        raise ValueError("invalid default answer: '%s'" % default)
+
+    while True:
+        print(question + prompt)
+        choice = input().lower()
+        if default is not None and choice == '':
+            return valid[default]
+        elif choice in valid:
+            return valid[choice]
+        else:
+            print("Please respond with 'yes' or 'no' "
+                  "(or 'y' or 'n').\n")
 
 
 def main():
