@@ -20,16 +20,21 @@ def set_logging(verbose=False):
 
 
 def add_task(args, db, cursor):
-    logging.info("Adding %s; priority %s; start time %s" % (args.name, args.priority, args.time))
+    logging.info("Adding %s; priority %s; due %s %s" % (args.name, args.priority, args.time, args.date))
 
     priority = args.priority
     if args.time:
         priority += 100
 
+    if args.date:
+        date = relative_date_to_sql_query(args.date)
+    else:
+        date = "date('now')"
+
     repeat = "+" + args.repeat if args.repeat else None
 
-    cursor.execute("INSERT INTO tasks(name, priority, due_time, weight, repeat_period) VALUES "
-                   "(?, ?, " + local_to_utc("?") + ", ?, ?)",
+    cursor.execute("INSERT INTO tasks(name, priority, due_time, due_date, weight, repeat_period) VALUES "
+                   "(?, ?, " + local_to_utc("?") + "," + date + ", ?, ?)",
                    (args.name, priority, args.time, args.weight, repeat))
     db.commit()
 
@@ -50,8 +55,8 @@ def list_tasks(args, cursor):
             query += "status=1 AND "
 
         if args.date:
-            query += "due_date=? "
-            query_arguments.append(args.date)
+            date = relative_date_to_sql_query(args.date)
+            query += "due_date is " + date if date == "null" else "due_date=" + date
         else:
             query_overdue = query + "due_date<current_date "
             query += "due_date=current_date "
@@ -216,6 +221,9 @@ def relative_date_to_sql_query(date: str):
 
     if date == "tomorrow":
         return "date('now', '+1 day')"
+
+    if date == "no":
+        return "null"
 
     return "date('" + date + "')"
 

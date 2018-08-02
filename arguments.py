@@ -57,6 +57,18 @@ def get_arguments():
              "'12 months' "
              "'123 days' "
     )
+    parser_add.add_argument(
+        '-d', '--date',
+        type=validate_relative_date,
+        help="Postpone the task. Excepted formats:"
+             "YYYY-MM-DD"
+             "today"
+             "tomorrow"
+             "'+X days'"
+             "'+X months'"
+             "'+X years'"
+             "no"
+    )
 
     # listing tasks
     parser_list = subparsers.add_parser('list', help='List tasks')
@@ -127,6 +139,7 @@ def get_arguments():
              "'+X days'"
              "'+X months'"
              "'+X years'"
+             "no"
     )
 
     # closing tasks
@@ -237,7 +250,7 @@ def validate_date(date_string: str):
 
 
 def validate_relative_date(date_string: str):
-    pattern = r"\d{4}-(0[1-9]|1[012])-([0-2]\d|3[0-1])|\+\d{1,3} (days|months|years)|today|tomorrow"
+    pattern = r"\d{4}-(0[1-9]|1[012])-([0-2]\d|3[0-1])|\+\d{1,3} (days|months|years)|today|tomorrow|no"
     result = re.search(pattern, date_string)
 
     if not result:
