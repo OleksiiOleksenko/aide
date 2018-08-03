@@ -181,6 +181,7 @@ def report(args, cursor):
         fig = plt.figure(figsize=(10, 1))
         ax = fig.add_subplot(111)
         ax.bar(dates, weights)
+        ax.yaxis.grid(True, linestyle=':', which='major')
         labels = ax.set_xticklabels(dates)
         plt.setp(labels, rotation=90)
         ax.set_aspect(3.)
