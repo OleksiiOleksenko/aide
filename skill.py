@@ -6,9 +6,15 @@ def train(args, db, cursor: sqlite3.Cursor):
     if args.list:
         cursor.execute("SELECT id, xp, gold_reward, name FROM trainers")
         trainers = cursor.fetchall()
-        print("ID : XP | G: | Name\n---------------------")
+        print("ID  | XP | G  | Name\n---------------------")
         for t in trainers:
-            print("{:<3}: {:<2} | {:<2} | {}".format(t[0], t[1], t[2], t[3]))
+            print("{:<3} | {:<2} | {:<2} | {}".format(t[0], t[1], t[2], t[3]))
+
+        cursor.execute("SELECT id, name, price FROM awards")
+        awards = cursor.fetchall()
+        print("\nID  | Price | Name\n---------------------")
+        for a in awards:
+            print("{:<3} | {:<5} | {}".format(a[0], a[2], a[1]))
         return
 
     if args.claim:
@@ -22,6 +28,15 @@ def train(args, db, cursor: sqlite3.Cursor):
         cursor.execute("SELECT gold FROM character WHERE id = 1")
         logging.info("Now you have " + str(cursor.fetchone()[0]) + " gold")
 
+        return
+
+    if args.character_parameters:
+        cursor.execute("SELECT level, gold, xp, xp_for_next_level FROM character WHERE id = 1")
+        character = cursor.fetchone()
+        print("Level: {}\n"
+              "Gold: {}\n"
+              "XP: {} [next: {}]"
+              .format(character[0], character[1], character[2], character[3]))
         return
 
     cursor.execute("SELECT name, xp, gold_reward, trained_skill FROM trainers WHERE id = ?", (args.id,))

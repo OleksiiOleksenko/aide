@@ -219,6 +219,12 @@ def get_arguments():
         help='tbd'
     )
 
+    parser_train.add_argument(
+        '-p', '--character-parameters',
+        action='store_true',
+        help='tbd'
+    )
+
     args = parser.parse_args()
     return args
 
