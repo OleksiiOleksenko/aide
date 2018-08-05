@@ -203,14 +203,26 @@ def print_tasks(tasks: list, verbose=True):
         logging.info("No open tasks")
         return
 
-    if not verbose:
+    # only the name of the task
+    if not verbose and len(tasks) == 1:
         print(tasks[0][1])
         return
 
-    for row in tasks:
+    # description of a task
+    if verbose and len(tasks) == 1:
+        row = tasks[0]
         due = row[3] if row[3] else "--:--"
         print("{:<2} | Pr: {:<3} | Status: {} | Weight: {:<4} | Due: {} | {}".format(
             row[0], row[2], row[4], row[5], due, row[1]))
+        return
+
+    if verbose:
+        print("PR | ST | WEI |  DUE  | ID  | Name\n---------------------------------")
+
+    for row in tasks:
+        due = row[3] if row[3] else "--:--"
+        print("{:<2} | {:<2} | {:<3} | {} | {:<3} | {}".format(
+            row[2], row[4], row[5], due, row[0], row[1]))
 
 
 def relative_date_to_sql_query(date: str):
