@@ -90,7 +90,7 @@ def modify_task(args, db, cursor):
         query_arguments.append(args.priority)
 
     if args.time:
-        setters.append("due_time=?")
+        setters.append("due_time=" + local_to_utc("?"))
         query_arguments.append(args.time)
 
     if args.weight >= 0:
@@ -217,7 +217,7 @@ def print_tasks(tasks: list, verbose=True):
         return
 
     if verbose:
-        print("PR | ST | WEI |  DUE  | ID  | Name\n---------------------------------")
+        print("PR  | ST | WEI  |  DUE  | ID  | Name\n-------------------------------------")
 
     for row in tasks:
         due = row[3] if row[3] else "--:--"
