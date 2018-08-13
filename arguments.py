@@ -53,9 +53,10 @@ def get_arguments():
         '-r', '--repeat',
         type=validate_time_period,
         help="Repetition period. Format examples: "
-             "'1 years' "
-             "'12 months' "
-             "'123 days' "
+             "'X years' "
+             "'X months' "
+             "'X days' "
+             "workdays"
     )
     parser_add.add_argument(
         '-d', '--date',
@@ -124,9 +125,10 @@ def get_arguments():
         '-r', '--repeat',
         type=validate_time_period,
         help="Repetition period. Format examples: "
-             "'X days' "
-             "'X months' "
-             "'X years' "
+             "'X days'"
+             "'X months'"
+             "'X years'"
+             "workdays"
     )
 
     parser_mod.add_argument(
@@ -238,7 +240,7 @@ def validate_time(time_string: str):
 
 
 def validate_time_period(date_string: str):
-    pattern = r"\d{1,3} (days|months|years)"
+    pattern = r"\d{1,3} (days|months|years)|workdays"
     result = re.search(pattern, date_string)
 
     if not result:
