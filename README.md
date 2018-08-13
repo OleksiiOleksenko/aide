@@ -26,10 +26,12 @@ sqlite3 /var/lib/task/tasks.db
 # Useful aliases
 
 ```bash
-alias tl="aide list -t"
-alias tla="aide list -o"
-alias ta="aide add"
+alias alt="aide list -t"
+alias alo="aide list -o"
+alias aa="aide add"
 alias cl="aide close"
+alias amo="aide mod"
+alias arep="aide report"
 ```
 
 

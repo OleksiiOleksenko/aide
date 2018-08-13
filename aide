@@ -221,7 +221,7 @@ def print_tasks(tasks: list, verbose=True):
 
     for row in tasks:
         due = row[3] if row[3] else "--:--"
-        print("{:<2} | {:<2} | {:<3} | {} | {:<3} | {}".format(
+        print("{:<3} | {:<2} | {:<4} | {} | {:<3} | {}".format(
             row[2], row[4], row[5], due, row[0], row[1]))
 
 
