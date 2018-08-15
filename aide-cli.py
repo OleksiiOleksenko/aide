@@ -1,6 +1,16 @@
+#!/usr/bin/env python3
+"""
+Command-line interface to Aide
+"""
+
 import datetime
+import logging
 import re
+import sqlite3
 from argparse import ArgumentParser, ArgumentTypeError
+
+import core
+import rpg_mod
 
 
 def get_arguments():
@@ -190,7 +200,6 @@ def get_arguments():
         type=str,
         help="The text of the note"
     )
-
     parser_note.add_argument(
         '-d', '--date',
         type=validate_date,
@@ -199,29 +208,30 @@ def get_arguments():
     )
 
     # RPG extension
-    parser_train = subparsers.add_parser('train',
-                                        help='tbd')
-    parser_train.add_argument(
-        'id',
-        nargs="?",
-        type=str,
-        help="tbd"
-    )
-
-    parser_train.add_argument(
-        '-l', '--list',
+    parser_rpg = subparsers.add_parser('rpg', help='tbd')
+    rpg_group = parser_rpg.add_mutually_exclusive_group()
+    rpg_group.add_argument(
+        '-l', '--list-quests',
         action='store_true',
         help='tbd'
     )
-
-    parser_train.add_argument(
-        '-c', '--claim',
+    rpg_group.add_argument(
+        '-f', '--finish-quest',
+        type=int,
+        help='tbd'
+    )
+    rpg_group.add_argument(
+        '-a', '--list-awards',
+        action='store_true',
+        help='tbd'
+    )
+    rpg_group.add_argument(
+        '-c', '--claim-award',
         type=int,
         default=0,
         help='tbd'
     )
-
-    parser_train.add_argument(
+    rpg_group.add_argument(
         '-p', '--character-parameters',
         action='store_true',
         help='tbd'
@@ -230,6 +240,8 @@ def get_arguments():
     args = parser.parse_args()
     return args
 
+
+# Argument validation
 
 def validate_time(time_string: str):
     try:
@@ -264,3 +276,172 @@ def validate_relative_date(date_string: str):
     if not result:
         raise ArgumentTypeError("Incorrect time format, should match " + pattern)
     return date_string
+
+
+def set_logging(verbose=False):
+    logging.basicConfig(
+        format='[%(levelname)s] %(message)s',
+        level=logging.INFO if not verbose else logging.DEBUG,
+        datefmt="%m-%d %H:%M:%S"
+    )
+
+
+def print_tasks(tasks: list, verbose=True):
+    if not tasks:
+        logging.info("No open tasks")
+        return
+
+    # only the name of the task
+    if not verbose and len(tasks) == 1:
+        print(tasks[0]["name"])
+        return
+
+    # description of a single task
+    if verbose and len(tasks) == 1:
+        t = tasks[0]
+        due_time = t["due_time"] if t["due_time"] else "--:--"
+        print("Pr: {:<3} | Status: {:<2} | Weight: {:<4} | Due: {} | ID: {:<3} | {}".format(
+            t["priority"], t["status"], t["weight"], due_time, t["id"], t["name"]))
+        return
+
+    if verbose:
+        print("PR  | ST | WEI  |  DUE  | ID  | Name\n-------------------------------------")
+
+    for t in tasks:
+        due_time = t["due_time"] if t["due_time"] else "--:--"
+        print("{:<3} | {:<2} | {:<4} | {} | {:<3} | {}".format(
+            t["priority"], t["status"], t["weight"], due_time, t["id"], t["name"]))
+
+
+def main():
+    set_logging()
+    args = get_arguments()
+    config = core.read_configuration()
+
+    # Connect to DB
+    database_file = config['db_path']
+    db = sqlite3.connect(database_file)
+    cursor = db.cursor()
+
+    #
+    # Execute the command:
+    # add new task
+    if args.subparser_name == 'add':
+        core.add_task(db, cursor, args.name, args.priority, args.time, args.date, args.weight, args.repeat)
+        print("Added '%s'; priority %s; due %s %s" % (args.name, args.priority, args.time, args.date))
+
+    # list tasks
+    elif args.subparser_name == 'list':
+        # by default, list overdue tasks too
+        if not args.date and not args.top:
+            print("  Overdue tasks:")
+            tasks = core.list_tasks(cursor, args.top, args.open, args.date, True)
+            print_tasks(tasks)
+            print("  Today tasks:")
+
+        tasks = core.list_tasks(cursor, args.top, args.open, args.date, False)
+        print_tasks(tasks)
+
+    # modify a task
+    elif args.subparser_name == 'mod':
+        core.modify_task(db, cursor, args.id, args.name, args.priority, args.time, args.weight, args.repeat, args.date)
+        print("Task modified: " + args.id)
+
+    # close a task
+    elif args.subparser_name == 'close':
+        name = core.close_task(db, cursor, args.id)
+        if not name:
+            print("Canceled")
+        else:
+            print("Closed task: " + name)
+            print("Next task:")
+            tasks = core.list_tasks(cursor, True, True, "")
+            print_tasks(tasks)
+
+    # delete a task
+    elif args.subparser_name == 'delete':
+        core.delete_task(db, cursor, args.id)
+        print("Task deleted: " + args.id)
+
+    # add a note
+    elif args.subparser_name == 'note':
+        core.add_note(db, cursor, args.date, args.text)
+        print("Note added")
+
+    # report stats
+    elif args.subparser_name == 'report':
+        if args.plot:
+            core.productivity_plot(cursor)
+        else:
+            weight = core.get_total_weight(cursor)
+            print("Total weight:", weight)
+
+    #
+    # RPG extension:
+    elif args.subparser_name == 'rpg':
+
+        # list quests
+        if args.list_quests:
+            quests = rpg_mod.get_quests(cursor)
+            print("ID  | XP | G  | Name \n-----------------")
+            for q in quests:
+                print("{:<3} | {:<2} | {:<2} | {}".format(q["id"], q["xp"], q["gold"], q["name"]))
+
+        # close a quest
+        elif args.finish_quest:
+            result = rpg_mod.close_quest(db, cursor, args.finish_quest)
+            if not result:
+                print("Not such quest!")
+
+            print("Closed quest: " + result[0])
+            if result[1]:
+                print("\n\n   Hey! You leveled up!!!\n")
+            if result[2]:
+                print("Skill " + result[3] + " increased to level " + result[4])
+
+        # list available awards
+        elif args.list_awards:
+            awards = rpg_mod.get_awards(cursor)
+            print("ID  | Price | Name\n---------------------")
+            for a in awards:
+                print("{:<3} | {:<5} | {}".format(a["id"], a["price"], a["name"]))
+
+        # claim an award
+        elif args.claim_award:
+            result = rpg_mod.claim_award(db, cursor, args.claim_award)
+            print("{} costed you {} gold".format(result[0], result[1]))
+            print("Now you have " + result[2] + " gold")
+
+        # print character parameters
+        elif args.character_parameters:
+            character = rpg_mod.get_character_stats(cursor)
+            print("Level: {}\n"
+                  "Gold: {}\n"
+                  "XP: {} [next: {}]"
+                  .format(character["level"], character["gold"], character["xp"], character["xp_for_next_level"]))
+
+        # by default, print all useful info
+        else:
+            quests = rpg_mod.get_quests(cursor)
+            print("  Quests")
+            print("ID  | XP | G  | Name \n-----------------")
+            for q in quests:
+                print("{:<3} | {:<2} | {:<2} | {}".format(q["id"], q["xp"], q["gold"], q["name"]))
+
+            awards = rpg_mod.get_awards(cursor)
+            print("  Awards")
+            print("ID  | Price | Name\n---------------------")
+            for a in awards:
+                print("{:<3} | {:<5} | {}".format(a["id"], a["price"], a["name"]))
+
+            character = rpg_mod.get_character_stats(cursor)
+            print("\nLevel: {}\n"
+                  "Gold: {}\n"
+                  "XP: {} [next: {}]"
+                  .format(character["level"], character["gold"], character["xp"], character["xp_for_next_level"]))
+
+    db.close()
+
+
+if __name__ == '__main__':
+    main()
