@@ -1,7 +1,7 @@
 # Installing
 
 ```bash
-sudo ln -s `pwd`/aide /usr/bin/aide
+sudo ln -s `pwd`/aide-cli.py /usr/bin/aide
 ```
 
 Create a minimal config file:

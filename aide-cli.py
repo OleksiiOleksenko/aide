@@ -313,6 +313,60 @@ def print_tasks(tasks: list, verbose=True):
             t["priority"], t["status"], t["weight"], due_time, t["id"], t["name"]))
 
 
+def ask_confirmation(question, default="yes"):
+    """Ask a yes/no question via raw_input() and return their answer.
+
+    "question" is a string that is presented to the user.
+    "default" is the presumed answer if the user just hits <Enter>.
+        It must be "yes" (the default), "no" or None (meaning
+        an answer is required of the user).
+
+    The "answer" return value is True for "yes" or False for "no".
+    """
+    valid = {"yes": True, "y": True, "ye": True,
+             "no": False, "n": False}
+    if default is None:
+        prompt = " [y/n] "
+    elif default == "yes":
+        prompt = " [Y/n] "
+    elif default == "no":
+        prompt = " [y/N] "
+    else:
+        raise ValueError("invalid default answer: '%s'" % default)
+
+    while True:
+        print(question + prompt)
+        choice = input().lower()
+        if default is not None and choice == '':
+            return valid[default]
+        elif choice in valid:
+            return valid[choice]
+        else:
+            print("Please respond with 'yes' or 'no' "
+                  "(or 'y' or 'n').\n")
+
+
+def close(db, cursor, id_):
+    if not id_:
+        task = core.list_tasks(cursor, True)
+        if not task:
+            print("No open tasks")
+            return
+        id_ = task[0]["id"]
+        name = task[0]["name"]
+        if not ask_confirmation("Do you want to close \"%s\"?" % name):
+            return
+
+    name = core.close_task(db, cursor, id_)
+    if not name:
+        print("Canceled")
+    else:
+        print("Closed task: " + name)
+        print("Next task:")
+        tasks = core.list_tasks(cursor, True, True, "")
+        print_tasks(tasks)
+
+
 def main():
     set_logging()
     args = get_arguments()
@@ -349,14 +403,7 @@ def main():
 
     # close a task
     elif args.subparser_name == 'close':
-        name = core.close_task(db, cursor, args.id)
-        if not name:
-            print("Canceled")
-        else:
-            print("Closed task: " + name)
-            print("Next task:")
-            tasks = core.list_tasks(cursor, True, True, "")
-            print_tasks(tasks)
+        close(db, cursor, args.id)
 
     # delete a task
     elif args.subparser_name == 'delete':

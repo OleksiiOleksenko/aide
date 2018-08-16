@@ -30,9 +30,9 @@ def add_task(db, cursor: sqlite3.Cursor, name, priority, time, date, weight, rep
     db.commit()
 
 
-def list_tasks(cursor: sqlite3.Cursor, only_top_result: bool, exclude_closed_tasks: bool, due_date: str,
+def list_tasks(cursor: sqlite3.Cursor, only_top_result: bool, exclude_closed_tasks=True, due_date="",
                list_overdue_tasks=False):
-    query = "SELECT id, name, priority, " + utc_to_local("due_time") + ", status, weight FROM tasks WHERE "
+    query = "SELECT id, name, priority, " + utc_to_local("due_time") + ", status, weight, due_date FROM tasks WHERE "
     where_clauses = []
     query_arguments = []
 
@@ -71,7 +71,8 @@ def list_tasks(cursor: sqlite3.Cursor, only_top_result: bool, exclude_closed_tas
         "priority": t[2],
         "due_time": t[3],
         "status": t[4],
-        "weight": t[5]
+        "weight": t[5],
+        "due_date": t[6]
     } for t in tasks]
 
 
@@ -112,20 +113,8 @@ def modify_task(db, cursor: sqlite3.Cursor, id_: str, name: str, priority: int, 
 
 
 def close_task(db, cursor: sqlite3.Cursor, id_: str):
-    if id_:
-        cursor.execute("SELECT name FROM tasks WHERE id = ?", (id_,))
-        name = cursor.fetchone()[0]
-    else:
-        # if id_ is not given -> close current top task
-        cursor.execute("SELECT id, name FROM tasks "
-                       "WHERE status=1 AND (due_time < current_time OR due_time IS NULL) AND due_date = current_date "
-                       " ORDER BY priority DESC "
-                       " LIMIT 1")
-        task = cursor.fetchone()
-        id_ = task[0]
-        name = task[1]
-        if not ask_confirmation("Do you want to close \"%s\"?" % name):
-            return None
+    cursor.execute("SELECT name FROM tasks WHERE id = ?", (id_,))
+    name = cursor.fetchone()[0]
 
     cursor.execute("UPDATE tasks SET status=0 WHERE id = ?", (id_,))
     db.commit()
@@ -180,8 +169,11 @@ def productivity_plot(cursor: sqlite3.Cursor):
     return
 
 
-def get_total_weight(cursor: sqlite3.Cursor):
-    query = "SELECT sum(weight) FROM tasks WHERE due_date=current_date GROUP BY due_date"
+def get_total_weight(cursor: sqlite3.Cursor, closed=False):
+    if closed:
+        query = "SELECT sum(weight) FROM tasks WHERE due_date=current_date AND status=0 GROUP BY due_date"
+    else:
+        query = "SELECT sum(weight) FROM tasks WHERE due_date=current_date GROUP BY due_date"
     query_arguments = []
 
     result = cursor.execute(query, query_arguments).fetchone()
@@ -220,36 +212,3 @@ def read_configuration():
     with open(os.path.expanduser("~/.aide.conf")) as f:
         config = json.load(f)
     return config
-
-
-def ask_confirmation(question, default="yes"):
-    """Ask a yes/no question via raw_input() and return their answer.
-
-    "question" is a string that is presented to the user.
-    "default" is the presumed answer if the user just hits <Enter>.
-        It must be "yes" (the default), "no" or None (meaning
-        an answer is required of the user).
-
-    The "answer" return value is True for "yes" or False for "no".
-    """
-    valid = {"yes": True, "y": True, "ye": True,
-             "no": False, "n": False}
-    if default is None:
-        prompt = " [y/n] "
-    elif default == "yes":
-        prompt = " [Y/n] "
-    elif default == "no":
-        prompt = " [y/N] "
-    else:
-        raise ValueError("invalid default answer: '%s'" % default)
-
-    while True:
-        print(question + prompt)
-        choice = input().lower()
-        if default is not None and choice == '':
-            return valid[default]
-        elif choice in valid:
-            return valid[choice]
-        else:
-            print("Please respond with 'yes' or 'no' "
-                  "(or 'y' or 'n').\n")
