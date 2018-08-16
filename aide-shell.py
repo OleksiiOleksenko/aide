@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import curses
+from enum import Enum
 import sqlite3
 
 import rpg_mod
@@ -36,7 +37,7 @@ class MainWindow:
         self.window.erase()
 
         # list of today tasks
-        self.window.addstr(0, (curses.COLS // 2) - 5, header)
+        self.window.addstr(0, 5, header, curses.A_BOLD)
 
         # table header
         self.window.addstr(1, 1, "Name")
@@ -118,6 +119,18 @@ class MessageWindow:
         self.stdscr.refresh()
         self.window.refresh()
 
+    def get_input(self):
+        curses.echo()
+
+        self.window.addstr(1, 1, ">> ")
+        self.stdscr.refresh()
+        self.window.refresh()
+
+        s = self.window.getstr(1, 5, 40)
+
+        curses.noecho()
+        return s.decode("utf-8")
+
 
 class CommandsWindow:
     def __init__(self, stdscr):
@@ -148,7 +161,7 @@ class CommandsWindow:
         self.stdscr.refresh()
         self.window.refresh()
 
-    def draw_open_tasks(self):
+    def draw_tasks(self):
         self.window.erase()
         self.window.box()
         self.window.addstr(0, (curses.COLS // 2) - 11, " Available commands ")
@@ -167,6 +180,30 @@ class CommandsWindow:
         self.window.addstr(3, 2, "o", curses.A_BOLD)
         self.window.addstr(3, 23, "c", curses.A_BOLD)
         self.window.addstr(3, 54, "q", curses.A_BOLD)
+
+        self.stdscr.refresh()
+        self.window.refresh()
+
+    def draw_modify(self):
+        self.window.erase()
+        self.window.box()
+        self.window.addstr(0, (curses.COLS // 2) - 11, " Available commands ")
+
+        self.window.addstr(1, 2, "n: set name       s: set status      p: set priority   w: set weight")
+        self.window.addstr(1, 2, "n", curses.A_BOLD)
+        self.window.addstr(1, 20, "s", curses.A_BOLD)
+        self.window.addstr(1, 39, "p", curses.A_BOLD)
+        self.window.addstr(1, 57, "w", curses.A_BOLD)
+
+        self.window.addstr(2, 2, "t: set due time   a: set due date    e: set repeat     d: delete tasks")
+        self.window.addstr(2, 2, "t", curses.A_BOLD)
+        self.window.addstr(2, 20, "a", curses.A_BOLD)
+        self.window.addstr(2, 39, "e", curses.A_BOLD)
+        self.window.addstr(2, 57, "d", curses.A_BOLD)
+
+        self.window.addstr(3, 2, "r: return                                              q: quit")
+        self.window.addstr(3, 2, "r", curses.A_BOLD)
+        self.window.addstr(3, 57, "q", curses.A_BOLD)
 
         self.stdscr.refresh()
         self.window.refresh()
@@ -202,9 +239,9 @@ class CharacterWindow:
         self.window.refresh()
 
 
-class ScreenState:
+class ScreenState(Enum):
     HOME = 1
-    OPEN_TASKS = 2
+    LIST_TASKS = 2
     ADD_NEW_TASK = 3
     QUIT = 0
 
@@ -238,8 +275,8 @@ class Screen:
         while self.state != ScreenState.QUIT:
             if self.state == ScreenState.HOME:
                 self.home()
-            elif self.state == ScreenState.OPEN_TASKS:
-                self.open_tasks()
+            elif self.state == ScreenState.LIST_TASKS:
+                self.tasks()
             elif self.state == ScreenState.ADD_NEW_TASK:
                 pass
 
@@ -269,7 +306,8 @@ class Screen:
                     self.message_window.print("No task to modify")
                     continue
 
-                self.message_window.print("Not implemented")
+                self.modify(tasks)
+                break  # we have to reload all windows after modification
             elif c == 'c':
                 if not tasks:
                     self.message_window.print("No task to close")
@@ -287,7 +325,7 @@ class Screen:
                     core.delete_task(self.db, self.cursor, tasks[0]["id"])
                     break
             elif c == 'l':
-                self.state = ScreenState.OPEN_TASKS
+                self.state = ScreenState.LIST_TASKS
                 break
             elif c == 'n':
                 self.message_window.print("Not implemented")
@@ -298,7 +336,7 @@ class Screen:
             elif c == 'w':
                 self.message_window.print("Not implemented")
 
-    def open_tasks(self):
+    def tasks(self):
         current_task = 0
         selected_tasks = set()
 
@@ -311,7 +349,7 @@ class Screen:
 
         # redraw windows
         self.main_window.draw_tasks(tasks)
-        self.commands_window.draw_open_tasks()
+        self.commands_window.draw_tasks()
         self.message_window.clear()
         self.main_window.draw_cursor(0, 0)
 
@@ -338,7 +376,12 @@ class Screen:
                 selected_tasks.discard(current_task)
                 self.main_window.draw_selection(current_task, True)
             elif c == 'm':
-                self.message_window.print("Not implemented")
+                if not selected_tasks:
+                    self.message_window.print("No selected tasks!")
+                    continue
+
+                self.modify([tasks[i] for i in selected_tasks])
+                break  # we have to reload all windows after modification
             elif c == 'h':
                 self.state = ScreenState.HOME
                 break
@@ -349,13 +392,79 @@ class Screen:
                 current_task = 0
                 self.main_window.draw_tasks(tasks)
                 self.main_window.draw_cursor(0, 0)
-
             elif c == 'c':
                 tasks = core.list_tasks(self.cursor, False, exclude_closed_tasks=False)
                 selected_tasks.clear()
                 current_task = 0
                 self.main_window.draw_tasks(tasks)
                 self.main_window.draw_cursor(0, 0)
+
+    def modify(self, tasks):
+        ids = [t["id"] for t in tasks]
+
+        # redraw windows
+        self.main_window.draw_tasks(tasks, header="All these tasks will be modified")
+        self.commands_window.draw_modify()
+        self.message_window.clear()
+
+        # wait for commands
+        while True:
+            c = self.stdscr.getkey()
+            self.message_window.clear()
+
+            if c == 'q':
+                self.state = ScreenState.QUIT
+                break
+            elif c == 'r':
+                return
+            elif c == 'n':
+                self.message_window.print("Enter new name:")
+                name = self.message_window.get_input()
+                for i, id_ in enumerate(ids):
+                    core.modify_task(self.db, self.cursor, id_=id_, name=name)
+                    tasks[i]["name"] = name
+                    self.main_window.draw_tasks(tasks, header="All these tasks will be modified")
+                    self.message_window.clear()
+            elif c == 's':
+                self.message_window.print("Enter new status, 0 - closed, 1 - open:")
+                status = int(self.message_window.get_input())
+                for i, id_ in enumerate(ids):
+                    core.modify_task(self.db, self.cursor, id_=id_, status=status)
+                    tasks[i]["status"] = status
+                    self.main_window.draw_tasks(tasks, header="All these tasks will be modified")
+                    self.message_window.clear()
+            elif c == 'p':
+                self.message_window.print("Enter new priority:")
+                priority = int(self.message_window.get_input())
+                for i, id_ in enumerate(ids):
+                    core.modify_task(self.db, self.cursor, id_=id_, priority=priority)
+                    tasks[i]["priority"] = priority
+                    self.main_window.draw_tasks(tasks, header="All these tasks will be modified")
+                    self.message_window.clear()
+            elif c == 'w':
+                self.message_window.print("Enter new weight:")
+                weight = float(self.message_window.get_input())
+                for i, id_ in enumerate(ids):
+                    core.modify_task(self.db, self.cursor, id_=id_, weight=weight)
+                    tasks[i]["weight"] = weight
+                    self.main_window.draw_tasks(tasks, header="All these tasks will be modified")
+                    self.message_window.clear()
+            elif c == 't':
+                self.message_window.print("Enter new time (HH:MM):")
+                time = self.message_window.get_input()
+                for i, id_ in enumerate(ids):
+                    core.modify_task(self.db, self.cursor, id_=id_, time=time)
+                    tasks[i]["time"] = time
+                    self.main_window.draw_tasks(tasks, header="All these tasks will be modified")
+                    self.message_window.clear()
+            elif c == 'a':
+                self.message_window.print("Not implemented!")
+            elif c == 'e':
+                self.message_window.print("Not implemented!")
+            elif c == 'd':
+                for i in ids:
+                    core.delete_task(self.db, self.cursor, i)
+                break
 
 
 def main(stdscr):

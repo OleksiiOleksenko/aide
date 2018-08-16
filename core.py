@@ -76,8 +76,8 @@ def list_tasks(cursor: sqlite3.Cursor, only_top_result: bool, exclude_closed_tas
     } for t in tasks]
 
 
-def modify_task(db, cursor: sqlite3.Cursor, id_: str, name: str, priority: int, time: str, weight: int, repeat: str,
-                due_date: str):
+def modify_task(db, cursor: sqlite3.Cursor, id_: str, name: str = "", priority: int = -1, time: str = "",
+                weight: float = -1, repeat: str = "", due_date: str = "", status: int = -1):
     setters = []
     query_arguments = []
 
@@ -104,6 +104,10 @@ def modify_task(db, cursor: sqlite3.Cursor, id_: str, name: str, priority: int, 
     if due_date:
         due_date = relative_date_to_sql_query(due_date)
         setters.append("due_date=" + due_date)
+
+    if status == 0 or status == 1:
+        setters.append("status=?")
+        query_arguments.append(status)
 
     query = "UPDATE tasks SET " + " AND ".join(setters) + " WHERE id = ?"
     query_arguments.append(id_)
