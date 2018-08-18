@@ -8,6 +8,7 @@ import datetime
 import logging
 import json
 import os
+import re
 import sqlite3
 
 import matplotlib.pyplot as plt
@@ -216,3 +217,41 @@ def read_configuration():
     with open(os.path.expanduser("~/.aide.conf")) as f:
         config = json.load(f)
     return config
+
+
+def validate_date(date_string: str) -> bool:
+    if not date_string:
+        return True
+
+    pattern = r"\d{4}-(0[1-9]|1[012])-([0-2]\d|3[0-1])"
+    result = re.search(pattern, date_string)
+    return bool(result)
+
+
+def validate_relative_date(date_string: str) -> bool:
+    if not date_string:
+        return True
+
+    pattern = r"\d{4}-(0[1-9]|1[012])-([0-2]\d|3[0-1])|\+\d{1,3} (days|months|years)|today|tomorrow|no"
+    result = re.search(pattern, date_string)
+    return bool(result)
+
+
+def validate_time(time_string: str) -> bool:
+    if not time_string:
+        return True
+
+    try:
+        datetime.datetime.strptime(time_string, "%H:%M")
+    except ValueError:
+        return False
+    return True
+
+
+def validate_time_period(date_string: str) -> bool:
+    if not date_string:
+        return True
+
+    pattern = r"\d{1,3} (days|months|years)|workdays"
+    result = re.search(pattern, date_string)
+    return bool(result)

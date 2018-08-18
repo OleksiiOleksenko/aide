@@ -176,7 +176,7 @@ class CommandsWindow:
         self.window.addstr(2, 2, "m", curses.A_BOLD)
         self.window.addstr(2, 23, "h", curses.A_BOLD)
 
-        self.window.addstr(3, 2, "o: include overdue   c: include closed              q: quit")
+        self.window.addstr(3, 2, "o: exclude overdue   c: include closed              q: quit")
         self.window.addstr(3, 2, "o", curses.A_BOLD)
         self.window.addstr(3, 23, "c", curses.A_BOLD)
         self.window.addstr(3, 54, "q", curses.A_BOLD)
@@ -300,7 +300,48 @@ class Screen:
                 self.state = ScreenState.QUIT
                 break
             elif c == 'a':
-                self.message_window.print("Not implemented")
+                self.message_window.print("Enter the task:")
+                name = self.message_window.get_input()
+                self.message_window.clear()
+
+                # priority
+                self.message_window.print("Enter task priority (0 if left blank):")
+                priority = self.message_window.get_input()
+                priority = int(priority) if priority else 0
+                self.message_window.clear()
+
+                # weight
+                self.message_window.print("Enter task weight (0.0 if left blank):")
+                weight = self.message_window.get_input()
+                weight = float(weight) if weight else 0.0
+                self.message_window.clear()
+
+                # due date
+                self.message_window.print("Enter due date (YYYY-MM-DD) (today if left blank):")
+                date = self.message_window.get_input()
+                if not core.validate_relative_date(date):
+                    self.message_window.print("Wrong date format. Aborted.")
+                    continue
+                self.message_window.clear()
+
+                # due time
+                self.message_window.print("Enter due time (HH:MM) (00:00 if left blank):")
+                time = self.message_window.get_input()
+                if not core.validate_time(date):
+                    self.message_window.print("Wrong time format. Aborted.")
+                    continue
+                self.message_window.clear()
+
+                # repeat period
+                self.message_window.print("Enter repetition period (no repetition if left blank):")
+                repeat = self.message_window.get_input()
+                if not core.validate_time_period(date):
+                    self.message_window.print("Wrong period format. Aborted.")
+                    continue
+                self.message_window.clear()
+
+                core.add_task(self.db, self.cursor, name, priority, time, date, weight, repeat)
+                break  # we have to reload all windows after modification
             elif c == 'm':
                 if not tasks:
                     self.message_window.print("No task to modify")
@@ -328,9 +369,21 @@ class Screen:
                 self.state = ScreenState.LIST_TASKS
                 break
             elif c == 'n':
-                self.message_window.print("Not implemented")
+                self.message_window.print("Enter the note:")
+                text = self.message_window.get_input()
+
+                self.message_window.clear()
+                self.message_window.print("Enter the date (YYYY-MM-DD):")
+                date = self.message_window.get_input()
+                if not core.validate_date(date):
+                    self.message_window.print("Wrong date format. Aborted.")
+                    continue
+
+                core.add_note(self.db, self.cursor, date, text)
+                self.message_window.clear()
+                self.message_window.print("Note added")
             elif c == 'r':
-                self.message_window.print("Not implemented")
+                core.productivity_plot(self.cursor)
             elif c == 'u':
                 self.message_window.print("Not implemented")
             elif c == 'w':
@@ -342,6 +395,7 @@ class Screen:
 
         # retrieve the tasks
         tasks = core.list_tasks(self.cursor, False)
+        tasks += core.list_tasks(self.cursor, False, list_overdue_tasks=True)
         if not tasks:
             self.message_window.print("No open tasks!")
             self.state = ScreenState.HOME
@@ -387,7 +441,6 @@ class Screen:
                 break
             elif c == 'o':
                 tasks = core.list_tasks(self.cursor, False)
-                tasks += core.list_tasks(self.cursor, False, list_overdue_tasks=True)
                 selected_tasks.clear()
                 current_task = 0
                 self.main_window.draw_tasks(tasks)

@@ -71,7 +71,7 @@ def get_arguments():
     parser_add.add_argument(
         '-d', '--date',
         type=validate_relative_date,
-        help="Postpone the task. Excepted formats:"
+        help="Due date. Excepted formats:"
              "YYYY-MM-DD"
              "today"
              "tomorrow"
