@@ -327,7 +327,7 @@ class Screen:
                 # due time
                 self.message_window.print("Enter due time (HH:MM) (00:00 if left blank):")
                 time = self.message_window.get_input()
-                if not core.validate_time(date):
+                if not core.validate_time(time):
                     self.message_window.print("Wrong time format. Aborted.")
                     continue
                 self.message_window.clear()
@@ -335,7 +335,7 @@ class Screen:
                 # repeat period
                 self.message_window.print("Enter repetition period (no repetition if left blank):")
                 repeat = self.message_window.get_input()
-                if not core.validate_time_period(date):
+                if not core.validate_time_period(repeat):
                     self.message_window.print("Wrong period format. Aborted.")
                     continue
                 self.message_window.clear()
@@ -476,44 +476,68 @@ class Screen:
                 for i, id_ in enumerate(ids):
                     core.modify_task(self.db, self.cursor, id_=id_, name=name)
                     tasks[i]["name"] = name
-                    self.main_window.draw_tasks(tasks, header="All these tasks will be modified")
-                    self.message_window.clear()
+                self.main_window.draw_tasks(tasks, header="All these tasks will be modified")
+                self.message_window.clear()
             elif c == 's':
                 self.message_window.print("Enter new status, 0 - closed, 1 - open:")
                 status = int(self.message_window.get_input())
                 for i, id_ in enumerate(ids):
                     core.modify_task(self.db, self.cursor, id_=id_, status=status)
                     tasks[i]["status"] = status
-                    self.main_window.draw_tasks(tasks, header="All these tasks will be modified")
-                    self.message_window.clear()
+                self.main_window.draw_tasks(tasks, header="All these tasks will be modified")
+                self.message_window.clear()
             elif c == 'p':
                 self.message_window.print("Enter new priority:")
                 priority = int(self.message_window.get_input())
                 for i, id_ in enumerate(ids):
                     core.modify_task(self.db, self.cursor, id_=id_, priority=priority)
                     tasks[i]["priority"] = priority
-                    self.main_window.draw_tasks(tasks, header="All these tasks will be modified")
-                    self.message_window.clear()
+                self.main_window.draw_tasks(tasks, header="All these tasks will be modified")
+                self.message_window.clear()
             elif c == 'w':
                 self.message_window.print("Enter new weight:")
                 weight = float(self.message_window.get_input())
                 for i, id_ in enumerate(ids):
                     core.modify_task(self.db, self.cursor, id_=id_, weight=weight)
                     tasks[i]["weight"] = weight
-                    self.main_window.draw_tasks(tasks, header="All these tasks will be modified")
-                    self.message_window.clear()
+                self.main_window.draw_tasks(tasks, header="All these tasks will be modified")
+                self.message_window.clear()
             elif c == 't':
                 self.message_window.print("Enter new time (HH:MM):")
                 time = self.message_window.get_input()
+                if not core.validate_time(time):
+                    self.message_window.print("Wrong time format. Aborted.")
+                    break
+
                 for i, id_ in enumerate(ids):
                     core.modify_task(self.db, self.cursor, id_=id_, time=time)
                     tasks[i]["time"] = time
-                    self.main_window.draw_tasks(tasks, header="All these tasks will be modified")
-                    self.message_window.clear()
+                self.main_window.draw_tasks(tasks, header="All these tasks will be modified")
+                self.message_window.clear()
             elif c == 'a':
-                self.message_window.print("Not implemented!")
+                self.message_window.print("Enter new due date (YYYY-MM-DD):")
+                date = self.message_window.get_input()
+                if not core.validate_relative_date(date):
+                    self.message_window.print("Wrong date format. Aborted.")
+                    break
+
+                for i, id_ in enumerate(ids):
+                    core.modify_task(self.db, self.cursor, id_=id_, due_date=date)
+                    tasks[i]["due_date"] = date
+                self.main_window.draw_tasks(tasks, header="All these tasks will be modified")
+                self.message_window.clear()
             elif c == 'e':
-                self.message_window.print("Not implemented!")
+                self.message_window.print("Enter repetition period (no repetition if left blank):")
+                repeat = self.message_window.get_input()
+                if not core.validate_time_period(repeat):
+                    self.message_window.print("Wrong period format. Aborted.")
+                    break
+
+                for i, id_ in enumerate(ids):
+                    core.modify_task(self.db, self.cursor, id_=id_, repeat=repeat)
+                    tasks[i]["repeat"] = repeat
+                self.main_window.draw_tasks(tasks, header="All these tasks will be modified")
+                self.message_window.clear()
             elif c == 'd':
                 for i in ids:
                     core.delete_task(self.db, self.cursor, i)
