@@ -77,6 +77,48 @@ class MainWindow:
         self.stdscr.refresh()
         self.window.refresh()
 
+    def draw_quests(self, quests):
+        self.window.erase()
+
+        # table header
+        self.window.addstr(1, 1, "Name")
+        self.window.addstr(1, curses.COLS - 12, "|XP |Gold")
+        self.window.hline(2, 0, curses.ACS_HLINE, curses.COLS - 1)
+
+        # list of current tasks
+        line = 3
+        for q in quests:
+            self.window.addstr(line, 2, q["name"])
+            self.window.addstr(line, curses.COLS - 12, "|{:<3}|{:<4}".format(q["xp"], q["gold"]))
+            line += 1
+
+        self.window.hline(line, 0, curses.ACS_HLINE, curses.COLS - 1)
+        line += 1
+
+        self.stdscr.refresh()
+        self.window.refresh()
+
+    def draw_awards(self, awards):
+        self.window.erase()
+
+        # table header
+        self.window.addstr(1, 1, "Name")
+        self.window.addstr(1, curses.COLS - 7, "|Price")
+        self.window.hline(2, 0, curses.ACS_HLINE, curses.COLS - 1)
+
+        # list of current tasks
+        line = 3
+        for a in awards:
+            self.window.addstr(line, 2, a["name"])
+            self.window.addstr(line, curses.COLS - 7, "|{:<5}".format(a["price"]))
+            line += 1
+
+        self.window.hline(line, 0, curses.ACS_HLINE, curses.COLS - 1)
+        line += 1
+
+        self.stdscr.refresh()
+        self.window.refresh()
+
 
 class MessageWindow:
     def __init__(self, stdscr):
@@ -172,9 +214,9 @@ class CommandsWindow:
         self.window.addstr(1, 42, "s", curses.A_BOLD)
         self.window.addstr(1, 54, "u", curses.A_BOLD)
 
-        self.window.addstr(2, 2, "m: modify selected   h: go to home screen")
+        self.window.addstr(2, 2, "m: modify selected   r: return to home screen")
         self.window.addstr(2, 2, "m", curses.A_BOLD)
-        self.window.addstr(2, 23, "h", curses.A_BOLD)
+        self.window.addstr(2, 23, "r", curses.A_BOLD)
 
         self.window.addstr(3, 2, "o: exclude overdue   c: include closed              q: quit")
         self.window.addstr(3, 2, "o", curses.A_BOLD)
@@ -204,6 +246,44 @@ class CommandsWindow:
         self.window.addstr(3, 2, "r: return                                              q: quit")
         self.window.addstr(3, 2, "r", curses.A_BOLD)
         self.window.addstr(3, 57, "q", curses.A_BOLD)
+
+        self.stdscr.refresh()
+        self.window.refresh()
+
+    def draw_quests(self):
+        self.window.erase()
+        self.window.box()
+        self.window.addstr(0, (curses.COLS // 2) - 11, " Available commands ")
+
+        self.window.addstr(1, 2, "n: next task         p: previous task")
+        self.window.addstr(1, 2, "n", curses.A_BOLD)
+        self.window.addstr(1, 23, "p", curses.A_BOLD)
+
+        self.window.addstr(2, 2, "c: close quests")
+        self.window.addstr(2, 2, "c", curses.A_BOLD)
+
+        self.window.addstr(3, 2, "r: return to home screen                            q: quit")
+        self.window.addstr(3, 2, "r", curses.A_BOLD)
+        self.window.addstr(3, 54, "q", curses.A_BOLD)
+
+        self.stdscr.refresh()
+        self.window.refresh()
+
+    def draw_awards(self):
+        self.window.erase()
+        self.window.box()
+        self.window.addstr(0, (curses.COLS // 2) - 11, " Available commands ")
+
+        self.window.addstr(1, 2, "n: next award         p: previous award")
+        self.window.addstr(1, 2, "n", curses.A_BOLD)
+        self.window.addstr(1, 24, "p", curses.A_BOLD)
+
+        self.window.addstr(2, 2, "c: claim award")
+        self.window.addstr(2, 2, "c", curses.A_BOLD)
+
+        self.window.addstr(3, 2, "r: return to home screen                            q: quit")
+        self.window.addstr(3, 2, "r", curses.A_BOLD)
+        self.window.addstr(3, 54, "q", curses.A_BOLD)
 
         self.stdscr.refresh()
         self.window.refresh()
@@ -242,7 +322,8 @@ class CharacterWindow:
 class ScreenState(Enum):
     HOME = 1
     LIST_TASKS = 2
-    ADD_NEW_TASK = 3
+    QUESTS = 3
+    AWARDS = 4
     QUIT = 0
 
 
@@ -277,8 +358,10 @@ class Screen:
                 self.home()
             elif self.state == ScreenState.LIST_TASKS:
                 self.tasks()
-            elif self.state == ScreenState.ADD_NEW_TASK:
-                pass
+            elif self.state == ScreenState.QUESTS:
+                self.quests()
+            elif self.state == ScreenState.AWARDS:
+                self.awards()
 
     def home(self):
         # retrieve the current task
@@ -385,9 +468,11 @@ class Screen:
             elif c == 'r':
                 core.productivity_plot(self.cursor)
             elif c == 'u':
-                self.message_window.print("Not implemented")
+                self.state = ScreenState.QUESTS
+                break
             elif c == 'w':
-                self.message_window.print("Not implemented")
+                self.state = ScreenState.AWARDS
+                break
 
     def tasks(self):
         current_task = 0
@@ -436,7 +521,7 @@ class Screen:
 
                 self.modify([tasks[i] for i in selected_tasks])
                 break  # we have to reload all windows after modification
-            elif c == 'h':
+            elif c == 'r':
                 self.state = ScreenState.HOME
                 break
             elif c == 'o':
@@ -541,6 +626,82 @@ class Screen:
             elif c == 'd':
                 for i in ids:
                     core.delete_task(self.db, self.cursor, i)
+                break
+
+    def quests(self):
+        # retrieve the quests
+        quests = rpg_mod.get_quests(self.cursor)
+        current_quest = 0
+
+        # redraw windows
+        self.main_window.draw_quests(quests)
+        self.commands_window.draw_quests()
+        self.progress_window.draw()
+        self.character_window.draw()
+        self.main_window.draw_cursor(0, 0)
+
+        # wait for commands
+        while True:
+            c = self.stdscr.getkey()
+            self.message_window.clear()
+
+            if c == 'q':
+                self.state = ScreenState.QUIT
+                break
+            elif c == 'r':
+                self.state = ScreenState.HOME
+                break
+            if c == 'n':
+                previous_value = current_quest
+                current_quest = (current_quest + 1) % len(quests)
+                self.main_window.draw_cursor(current_quest, previous_value)
+            elif c == 'p':
+                previous_value = current_quest
+                current_quest = (current_quest - 1) % len(quests)
+                self.main_window.draw_cursor(current_quest, previous_value)
+            elif c == 'c':
+                result = rpg_mod.close_quest(self.db, self.cursor, quests[current_quest]["id"])
+                message = "Closed quest: " + result[0]
+                if result[2]:
+                    message = "Skill " + result[3] + " increased to level " + result[4]
+                if result[1]:
+                    message = "Hey! You leveled up!!!"
+                self.message_window.print(message)
+                break
+
+    def awards(self):
+        # retrieve the quests
+        awards = rpg_mod.get_awards(self.cursor)
+        current_award = 0
+
+        # redraw windows
+        self.main_window.draw_awards(awards)
+        self.commands_window.draw_awards()
+        self.character_window.draw()
+        self.main_window.draw_cursor(0, 0)
+
+        # wait for commands
+        while True:
+            c = self.stdscr.getkey()
+            self.message_window.clear()
+
+            if c == 'q':
+                self.state = ScreenState.QUIT
+                break
+            elif c == 'r':
+                self.state = ScreenState.HOME
+                break
+            if c == 'n':
+                previous_value = current_award
+                current_award = (current_award + 1) % len(awards)
+                self.main_window.draw_cursor(current_award, previous_value)
+            elif c == 'p':
+                previous_value = current_award
+                current_award = (current_award - 1) % len(awards)
+                self.main_window.draw_cursor(current_award, previous_value)
+            elif c == 'c':
+                result = rpg_mod.claim_award(self.db, self.cursor, awards[current_award]["id"])
+                self.message_window.print("{} costed you {} gold".format(result[0], result[1]))
                 break
 
 
