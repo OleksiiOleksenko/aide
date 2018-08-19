@@ -3,8 +3,9 @@ import curses
 from enum import Enum
 import sqlite3
 
-import rpg_mod
 import core
+import rpg_mod
+import project_mod
 
 
 class MainWindow:
@@ -119,6 +120,27 @@ class MainWindow:
         self.stdscr.refresh()
         self.window.refresh()
 
+    def draw_projects(self, projects):
+        self.window.erase()
+
+        # table header
+        self.window.addstr(1, 1, "Name")
+        self.window.addstr(1, curses.COLS - 10, "|Priority")
+        self.window.hline(2, 0, curses.ACS_HLINE, curses.COLS - 1)
+
+        # list of current tasks
+        line = 3
+        for p in projects:
+            self.window.addstr(line, 2, p["name"])
+            self.window.addstr(line, curses.COLS - 10, "|{:<8}".format(p["priority"]))
+            line += 1
+
+        self.window.hline(line, 0, curses.ACS_HLINE, curses.COLS - 1)
+        line += 1
+
+        self.stdscr.refresh()
+        self.window.refresh()
+
 
 class MessageWindow:
     def __init__(self, stdscr):
@@ -190,10 +212,11 @@ class CommandsWindow:
         self.window.addstr(1, 39, "c", curses.A_BOLD)
         self.window.addstr(1, 59, "d", curses.A_BOLD)
 
-        self.window.addstr(2, 2, "l: list tasks     n: add note        r: show reports")
+        self.window.addstr(2, 2, "l: list tasks     n: add note        r: show reports     p: projects")
         self.window.addstr(2, 2, "l", curses.A_BOLD)
         self.window.addstr(2, 20, "n", curses.A_BOLD)
         self.window.addstr(2, 39, "r", curses.A_BOLD)
+        self.window.addstr(2, 59, "p", curses.A_BOLD)
 
         self.window.addstr(3, 2, "u: quests         w: awards                              q: quit")
         self.window.addstr(3, 2, "u", curses.A_BOLD)
@@ -288,6 +311,47 @@ class CommandsWindow:
         self.stdscr.refresh()
         self.window.refresh()
 
+    def draw_projects(self):
+        self.window.erase()
+        self.window.box()
+        self.window.addstr(0, (curses.COLS // 2) - 11, " Available commands ")
+
+        self.window.addstr(1, 2, "n: next project         p: previous project")
+        self.window.addstr(1, 2, "n", curses.A_BOLD)
+        self.window.addstr(1, 26, "p", curses.A_BOLD)
+
+        self.window.addstr(2, 2, "l: list tasks           e: set priority             a: add project")
+        self.window.addstr(2, 2, "l", curses.A_BOLD)
+        self.window.addstr(2, 26, "e", curses.A_BOLD)
+        self.window.addstr(2, 54, "a", curses.A_BOLD)
+
+        self.window.addstr(3, 2, "r: return to home screen                            q: quit")
+        self.window.addstr(3, 2, "r", curses.A_BOLD)
+        self.window.addstr(3, 54, "q", curses.A_BOLD)
+
+        self.stdscr.refresh()
+        self.window.refresh()
+
+    def draw_tasks_in_project(self):
+        self.window.erase()
+        self.window.box()
+        self.window.addstr(0, (curses.COLS // 2) - 11, " Available commands ")
+
+        self.window.addstr(1, 2, "n: next project         p: previous project")
+        self.window.addstr(1, 2, "n", curses.A_BOLD)
+        self.window.addstr(1, 26, "p", curses.A_BOLD)
+
+        self.window.addstr(2, 2, "t: set for today        o: remove due date")
+        self.window.addstr(2, 2, "t", curses.A_BOLD)
+        self.window.addstr(2, 26, "o", curses.A_BOLD)
+
+        self.window.addstr(3, 2, "r: return to home screen                            q: quit")
+        self.window.addstr(3, 2, "r", curses.A_BOLD)
+        self.window.addstr(3, 54, "q", curses.A_BOLD)
+
+        self.stdscr.refresh()
+        self.window.refresh()
+
 
 class ProgressWindow:
     def __init__(self, db: sqlite3.Connection, cursor: sqlite3.Cursor, stdscr):
@@ -324,6 +388,7 @@ class ScreenState(Enum):
     LIST_TASKS = 2
     QUESTS = 3
     AWARDS = 4
+    PROJECTS = 5
     QUIT = 0
 
 
@@ -362,6 +427,8 @@ class Screen:
                 self.quests()
             elif self.state == ScreenState.AWARDS:
                 self.awards()
+            elif self.state == ScreenState.PROJECTS:
+                self.projects()
 
     def home(self):
         # retrieve the current task
@@ -472,6 +539,9 @@ class Screen:
                 break
             elif c == 'w':
                 self.state = ScreenState.AWARDS
+                break
+            elif c == 'p':
+                self.state = ScreenState.PROJECTS
                 break
 
     def tasks(self):
@@ -703,6 +773,110 @@ class Screen:
                 result = rpg_mod.claim_award(self.db, self.cursor, awards[current_award]["id"])
                 self.message_window.print("{} costed you {} gold".format(result[0], result[1]))
                 break
+
+    def projects(self):
+        # retrieve the quests
+        projects = project_mod.list_projects(self.cursor)
+        current = 0
+
+        # redraw windows
+        self.main_window.draw_projects(projects)
+        self.commands_window.draw_projects()
+        self.character_window.draw()
+        self.main_window.draw_cursor(0, 0)
+
+        # wait for commands
+        while True:
+            c = self.stdscr.getkey()
+            self.message_window.clear()
+
+            if c == 'q':
+                self.state = ScreenState.QUIT
+                break
+            elif c == 'r':
+                self.state = ScreenState.HOME
+                break
+            elif c == 'n':
+                previous_value = current
+                current = (current + 1) % len(projects)
+                self.main_window.draw_cursor(current, previous_value)
+            elif c == 'p':
+                previous_value = current
+                current = (current - 1) % len(projects)
+                self.main_window.draw_cursor(current, previous_value)
+            elif c == 'l':
+                self.tasks_in_project(projects[current]["id"])
+                break
+            elif c == 'e':
+                self.message_window.print("Enter priority:")
+                priority = self.message_window.get_input()
+                if not priority:
+                    self.message_window.print("Aborted")
+                    continue
+                project_mod.modify_project(self.db, self.cursor, projects[current]["id"], priority=priority)
+                break
+            elif c == 'a':
+                self.message_window.print("Enter the name:")
+                name = self.message_window.get_input()
+                self.message_window.clear()
+
+                self.message_window.print("Enter priority (0 if left blank):")
+                priority = self.message_window.get_input()
+                priority = int(priority) if priority else 0
+                self.message_window.clear()
+
+                project_mod.add_project(self.db, self.cursor, name, priority)
+                break
+
+    def tasks_in_project(self, id_):
+        # retrieve the quests
+        tasks = core.list_tasks(self.cursor, project=id_)
+        tasks += core.list_tasks(self.cursor, project=id_, list_overdue_tasks=True)
+        tasks += core.list_tasks(self.cursor, project=id_, due_date="no")
+        current = 0
+
+        # redraw windows
+        self.main_window.draw_tasks(tasks)
+        self.commands_window.draw_tasks_in_project()
+        self.character_window.draw()
+        self.main_window.draw_cursor(0, 0)
+
+        # wait for commands
+        while True:
+            c = self.stdscr.getkey()
+            self.message_window.clear()
+
+            if c == 'q':
+                self.state = ScreenState.QUIT
+                break
+            elif c == 'r':
+                break
+            elif c == 'n':
+                previous_value = current
+                current = (current + 1) % len(tasks)
+                self.main_window.draw_cursor(current, previous_value)
+            elif c == 'p':
+                previous_value = current
+                current = (current - 1) % len(tasks)
+                self.main_window.draw_cursor(current, previous_value)
+            elif c == 't':
+                core.modify_task(self.db, self.cursor, tasks[current]["id"], due_date="today")
+                tasks = core.list_tasks(self.cursor, project=id_)
+                tasks += core.list_tasks(self.cursor, project=id_, list_overdue_tasks=True)
+                tasks += core.list_tasks(self.cursor, project=id_, due_date="no")
+                current = 0
+                
+                self.main_window.draw_tasks(tasks)
+                self.main_window.draw_cursor(0, 0)
+            elif c == 'o':
+                core.modify_task(self.db, self.cursor, tasks[current]["id"], due_date="no")
+                tasks = core.list_tasks(self.cursor, project=id_)
+                tasks += core.list_tasks(self.cursor, project=id_, list_overdue_tasks=True)
+                tasks += core.list_tasks(self.cursor, project=id_, due_date="no")
+                current = 0
+
+                self.main_window.draw_tasks(tasks)
+                self.main_window.draw_cursor(0, 0)
 
 
 def main(stdscr):

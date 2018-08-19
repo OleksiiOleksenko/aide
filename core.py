@@ -14,7 +14,7 @@ import sqlite3
 import matplotlib.pyplot as plt
 
 
-def add_task(db, cursor: sqlite3.Cursor, name, priority, time, date, weight, repeat):
+def add_task(db, cursor: sqlite3.Cursor, name, priority, time, date, weight, repeat, project: int = None):
     if time:
         priority += 100
 
@@ -25,15 +25,16 @@ def add_task(db, cursor: sqlite3.Cursor, name, priority, time, date, weight, rep
 
     repeat = "+" + repeat if repeat else None
 
-    cursor.execute("INSERT INTO tasks(name, priority, due_time, due_date, weight, repeat_period) VALUES "
-                   "(?, ?, " + local_to_utc("?") + "," + date + ", ?, ?)",
-                   (name, priority, time, weight, repeat))
+    cursor.execute("INSERT INTO tasks(name, priority, due_time, due_date, weight, repeat_period, project) VALUES "
+                   "(?, ?, " + local_to_utc("?") + "," + date + ", ?, ?, ?)",
+                   (name, priority, time, weight, repeat, project))
     db.commit()
 
 
-def list_tasks(cursor: sqlite3.Cursor, only_top_result: bool, exclude_closed_tasks=True, due_date="",
-               list_overdue_tasks=False):
-    query = "SELECT id, name, priority, " + utc_to_local("due_time") + ", status, weight, due_date FROM tasks WHERE "
+def list_tasks(cursor: sqlite3.Cursor, only_top_result: bool = False, exclude_closed_tasks: bool = True,
+               due_date: str = None, project: int = None, list_overdue_tasks: bool = False):
+    query = "SELECT id, name, priority, " + utc_to_local("due_time") + ", status, weight, due_date, project " \
+                                                                       "FROM tasks WHERE "
     where_clauses = []
     query_arguments = []
 
@@ -46,6 +47,9 @@ def list_tasks(cursor: sqlite3.Cursor, only_top_result: bool, exclude_closed_tas
     else:
         if exclude_closed_tasks:
             where_clauses.append("status=1")
+
+        if project:
+            where_clauses.append("project=" + str(project))
 
         if due_date:
             due_date = relative_date_to_sql_query(due_date)
@@ -73,12 +77,13 @@ def list_tasks(cursor: sqlite3.Cursor, only_top_result: bool, exclude_closed_tas
         "due_time": t[3],
         "status": t[4],
         "weight": t[5],
-        "due_date": t[6]
+        "due_date": t[6],
+        "project": t[7]
     } for t in tasks]
 
 
 def modify_task(db, cursor: sqlite3.Cursor, id_: str, name: str = "", priority: int = -1, time: str = "",
-                weight: float = -1, repeat: str = "", due_date: str = "", status: int = -1):
+                weight: float = -1, repeat: str = "", due_date: str = "", status: int = -1, project: int = None):
     setters = []
     query_arguments = []
 
@@ -109,6 +114,10 @@ def modify_task(db, cursor: sqlite3.Cursor, id_: str, name: str = "", priority: 
     if status == 0 or status == 1:
         setters.append("status=?")
         query_arguments.append(status)
+
+    if project:
+        setters.append("project=?")
+        query_arguments.append(project)
 
     query = "UPDATE tasks SET " + " AND ".join(setters) + " WHERE id = ?"
     query_arguments.append(id_)
