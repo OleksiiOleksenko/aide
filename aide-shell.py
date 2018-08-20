@@ -416,7 +416,10 @@ class Screen:
     def start(self):
         # clear screen
         self.stdscr.clear()
-        curses.curs_set(False)
+        try:
+            curses.curs_set(False)
+        except curses.error:
+            pass
 
         while self.state != ScreenState.QUIT:
             if self.state == ScreenState.HOME:
@@ -865,7 +868,7 @@ class Screen:
                 tasks += core.list_tasks(self.cursor, project=id_, list_overdue_tasks=True)
                 tasks += core.list_tasks(self.cursor, project=id_, due_date="no")
                 current = 0
-                
+
                 self.main_window.draw_tasks(tasks)
                 self.main_window.draw_cursor(0, 0)
             elif c == 'o':
