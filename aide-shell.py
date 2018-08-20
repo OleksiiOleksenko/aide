@@ -237,9 +237,10 @@ class CommandsWindow:
         self.window.addstr(1, 42, "s", curses.A_BOLD)
         self.window.addstr(1, 54, "u", curses.A_BOLD)
 
-        self.window.addstr(2, 2, "m: modify selected   r: return to home screen")
+        self.window.addstr(2, 2, "m: modify selected   r: return to home screen       a: add task")
         self.window.addstr(2, 2, "m", curses.A_BOLD)
         self.window.addstr(2, 23, "r", curses.A_BOLD)
+        self.window.addstr(2, 54, "a", curses.A_BOLD)
 
         self.window.addstr(3, 2, "o: exclude overdue   c: include closed              q: quit")
         self.window.addstr(3, 2, "o", curses.A_BOLD)
@@ -453,48 +454,10 @@ class Screen:
                 self.state = ScreenState.QUIT
                 break
             elif c == 'a':
-                self.message_window.print("Enter the task:")
-                name = self.message_window.get_input()
-                self.message_window.clear()
-
-                # priority
-                self.message_window.print("Enter task priority (0 if left blank):")
-                priority = self.message_window.get_input()
-                priority = int(priority) if priority else 0
-                self.message_window.clear()
-
-                # weight
-                self.message_window.print("Enter task weight (0.0 if left blank):")
-                weight = self.message_window.get_input()
-                weight = float(weight) if weight else 0.0
-                self.message_window.clear()
-
-                # due date
-                self.message_window.print("Enter due date (YYYY-MM-DD) (today if left blank):")
-                date = self.message_window.get_input()
-                if not core.validate_relative_date(date):
-                    self.message_window.print("Wrong date format. Aborted.")
-                    continue
-                self.message_window.clear()
-
-                # due time
-                self.message_window.print("Enter due time (HH:MM) (00:00 if left blank):")
-                time = self.message_window.get_input()
-                if not core.validate_time(time):
-                    self.message_window.print("Wrong time format. Aborted.")
-                    continue
-                self.message_window.clear()
-
-                # repeat period
-                self.message_window.print("Enter repetition period (no repetition if left blank):")
-                repeat = self.message_window.get_input()
-                if not core.validate_time_period(repeat):
-                    self.message_window.print("Wrong period format. Aborted.")
-                    continue
-                self.message_window.clear()
-
-                core.add_task(self.db, self.cursor, name, priority, time, date, weight, repeat)
-                break  # we have to reload all windows after modification
+                if self.add_task():
+                    break  # we have to reload all windows after modification
+                else:
+                    continue  # no need to reload if task wasn't added
             elif c == 'm':
                 if not tasks:
                     self.message_window.print("No task to modify")
@@ -562,6 +525,7 @@ class Screen:
         # redraw windows
         self.main_window.draw_tasks(tasks)
         self.commands_window.draw_tasks()
+        self.progress_window.draw()
         self.message_window.clear()
         self.main_window.draw_cursor(0, 0)
 
@@ -609,6 +573,11 @@ class Screen:
                 current_task = 0
                 self.main_window.draw_tasks(tasks)
                 self.main_window.draw_cursor(0, 0)
+            elif c == 'a':
+                if self.add_task():
+                    break  # we have to reload all windows after modification
+                else:
+                    continue  # no need to reload if task wasn't added
 
     def modify(self, tasks):
         ids = [t["id"] for t in tasks]
@@ -700,6 +669,50 @@ class Screen:
                 for i in ids:
                     core.delete_task(self.db, self.cursor, i)
                 break
+
+    def add_task(self):
+        self.message_window.print("Enter the task:")
+        name = self.message_window.get_input()
+        self.message_window.clear()
+
+        # priority
+        self.message_window.print("Enter task priority (0 if left blank):")
+        priority = self.message_window.get_input()
+        priority = int(priority) if priority else 0
+        self.message_window.clear()
+
+        # weight
+        self.message_window.print("Enter task weight (0.0 if left blank):")
+        weight = self.message_window.get_input()
+        weight = float(weight) if weight else 0.0
+        self.message_window.clear()
+
+        # due date
+        self.message_window.print("Enter due date (YYYY-MM-DD) (today if left blank):")
+        date = self.message_window.get_input()
+        if not core.validate_relative_date(date):
+            self.message_window.print("Wrong date format. Aborted.")
+            return False
+        self.message_window.clear()
+
+        # due time
+        self.message_window.print("Enter due time (HH:MM) (00:00 if left blank):")
+        time = self.message_window.get_input()
+        if not core.validate_time(time):
+            self.message_window.print("Wrong time format. Aborted.")
+            return False
+        self.message_window.clear()
+
+        # repeat period
+        self.message_window.print("Enter repetition period (no repetition if left blank):")
+        repeat = self.message_window.get_input()
+        if not core.validate_time_period(repeat):
+            self.message_window.print("Wrong period format. Aborted.")
+            return False
+        self.message_window.clear()
+
+        core.add_task(self.db, self.cursor, name, priority, time, date, weight, repeat)
+        return True
 
     def quests(self):
         # retrieve the quests
