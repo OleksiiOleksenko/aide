@@ -8,7 +8,7 @@ def add_project(db, cursor: sqlite3.Cursor, name: str, priority: int):
 
 
 def list_projects(cursor: sqlite3.Cursor):
-    query = "SELECT id, name, priority FROM projects"
+    query = "SELECT id, name, priority FROM projects ORDER BY priority DESC"
     cursor.execute(query)
     projects = cursor.fetchall()
     return [{

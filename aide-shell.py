@@ -326,7 +326,7 @@ class CommandsWindow:
         self.window.addstr(2, 26, "e", curses.A_BOLD)
         self.window.addstr(2, 54, "a", curses.A_BOLD)
 
-        self.window.addstr(3, 2, "r: return to home screen                            q: quit")
+        self.window.addstr(3, 2, "r: return                                           q: quit")
         self.window.addstr(3, 2, "r", curses.A_BOLD)
         self.window.addstr(3, 54, "q", curses.A_BOLD)
 
@@ -342,11 +342,12 @@ class CommandsWindow:
         self.window.addstr(1, 2, "n", curses.A_BOLD)
         self.window.addstr(1, 26, "p", curses.A_BOLD)
 
-        self.window.addstr(2, 2, "t: set for today        o: remove due date")
+        self.window.addstr(2, 2, "t: set for today        o: remove due date          a: add task to project")
         self.window.addstr(2, 2, "t", curses.A_BOLD)
         self.window.addstr(2, 26, "o", curses.A_BOLD)
+        self.window.addstr(2, 54, "a", curses.A_BOLD)
 
-        self.window.addstr(3, 2, "r: return to home screen                            q: quit")
+        self.window.addstr(3, 2, "r: return                                           q: quit")
         self.window.addstr(3, 2, "r", curses.A_BOLD)
         self.window.addstr(3, 54, "q", curses.A_BOLD)
 
@@ -670,7 +671,7 @@ class Screen:
                     core.delete_task(self.db, self.cursor, i)
                 break
 
-    def add_task(self):
+    def add_task(self, due_date: str = "", due_time: str = "", project: int = None):
         self.message_window.print("Enter the task:")
         name = self.message_window.get_input()
         self.message_window.clear()
@@ -688,20 +689,22 @@ class Screen:
         self.message_window.clear()
 
         # due date
-        self.message_window.print("Enter due date (YYYY-MM-DD) (today if left blank):")
-        date = self.message_window.get_input()
-        if not core.validate_relative_date(date):
-            self.message_window.print("Wrong date format. Aborted.")
-            return False
-        self.message_window.clear()
+        if due_date == "":
+            self.message_window.print("Enter due date (YYYY-MM-DD) (today if left blank):")
+            due_date = self.message_window.get_input()
+            if not core.validate_relative_date(due_date):
+                self.message_window.print("Wrong date format. Aborted.")
+                return False
+            self.message_window.clear()
 
         # due time
-        self.message_window.print("Enter due time (HH:MM) (00:00 if left blank):")
-        time = self.message_window.get_input()
-        if not core.validate_time(time):
-            self.message_window.print("Wrong time format. Aborted.")
-            return False
-        self.message_window.clear()
+        if due_time == "":
+            self.message_window.print("Enter due time (HH:MM) (00:00 if left blank):")
+            due_time = self.message_window.get_input()
+            if not core.validate_time(due_time):
+                self.message_window.print("Wrong time format. Aborted.")
+                return False
+            self.message_window.clear()
 
         # repeat period
         self.message_window.print("Enter repetition period (no repetition if left blank):")
@@ -711,7 +714,7 @@ class Screen:
             return False
         self.message_window.clear()
 
-        core.add_task(self.db, self.cursor, name, priority, time, date, weight, repeat)
+        core.add_task(self.db, self.cursor, name, priority, due_time, due_date, weight, repeat, project=project)
         return True
 
     def quests(self):
@@ -893,6 +896,11 @@ class Screen:
 
                 self.main_window.draw_tasks(tasks)
                 self.main_window.draw_cursor(0, 0)
+            elif c == 'a':
+                if self.add_task(project=id_, due_date="no", due_time=None):
+                    break  # we have to reload all windows after modification
+                else:
+                    continue  # no need to reload if task wasn't added
 
 
 def main(stdscr):
