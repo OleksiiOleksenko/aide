@@ -667,9 +667,10 @@ class Screen:
                 self.main_window.draw_tasks(tasks, header="All these tasks will be modified")
                 self.message_window.clear()
             elif c == 'd':
-                for i in ids:
-                    core.delete_task(self.db, self.cursor, i)
-                break
+                if self.message_window.ask_confirmation("Do you want to delete the tasks?"):
+                    for i in ids:
+                        core.delete_task(self.db, self.cursor, i)
+                    break
 
     def add_task(self, due_date: str = "", due_time: str = "", project: int = None):
         self.message_window.print("Enter the task:")
@@ -801,7 +802,7 @@ class Screen:
         # redraw windows
         self.main_window.draw_projects(projects)
         self.commands_window.draw_projects()
-        self.character_window.draw()
+        self.progress_window.draw()
         self.main_window.draw_cursor(0, 0)
 
         # wait for commands
@@ -857,7 +858,7 @@ class Screen:
         # redraw windows
         self.main_window.draw_tasks(tasks)
         self.commands_window.draw_tasks_in_project()
-        self.character_window.draw()
+        self.progress_window.draw()
         self.main_window.draw_cursor(0, 0)
 
         # wait for commands
@@ -886,6 +887,7 @@ class Screen:
                 current = 0
 
                 self.main_window.draw_tasks(tasks)
+                self.progress_window.draw()
                 self.main_window.draw_cursor(0, 0)
             elif c == 'o':
                 core.modify_task(self.db, self.cursor, tasks[current]["id"], due_date="no")
@@ -895,6 +897,7 @@ class Screen:
                 current = 0
 
                 self.main_window.draw_tasks(tasks)
+                self.progress_window.draw()
                 self.main_window.draw_cursor(0, 0)
             elif c == 'a':
                 if self.add_task(project=id_, due_date="no", due_time=None):
