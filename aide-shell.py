@@ -231,21 +231,23 @@ class CommandsWindow:
         self.window.box()
         self.window.addstr(0, (curses.COLS // 2) - 11, " Available commands ")
 
-        self.window.addstr(1, 2, "n: next task         p: previous task   s: select   u: undo selection")
+        self.window.addstr(1, 2, "n: next task        p: previous task    s: select           u: undo selection   ")
         self.window.addstr(1, 2, "n", curses.A_BOLD)
-        self.window.addstr(1, 23, "p", curses.A_BOLD)
+        self.window.addstr(1, 22, "p", curses.A_BOLD)
         self.window.addstr(1, 42, "s", curses.A_BOLD)
-        self.window.addstr(1, 54, "u", curses.A_BOLD)
+        self.window.addstr(1, 62, "u", curses.A_BOLD)
 
-        self.window.addstr(2, 2, "m: modify selected   r: return to home screen       a: add task")
-        self.window.addstr(2, 2, "m", curses.A_BOLD)
-        self.window.addstr(2, 23, "r", curses.A_BOLD)
-        self.window.addstr(2, 54, "a", curses.A_BOLD)
+        self.window.addstr(2, 2, "a: add task         m: modify selected  h: higher prio.     l: lower prio.")
+        self.window.addstr(2, 2, "a", curses.A_BOLD)
+        self.window.addstr(2, 22, "m", curses.A_BOLD)
+        self.window.addstr(2, 42, "h", curses.A_BOLD)
+        self.window.addstr(2, 62, "l", curses.A_BOLD)
 
-        self.window.addstr(3, 2, "o: exclude overdue   c: include closed              q: quit")
+        self.window.addstr(3, 2, "o: exclude overdue  c: include closed   r: return           q: quit")
         self.window.addstr(3, 2, "o", curses.A_BOLD)
-        self.window.addstr(3, 23, "c", curses.A_BOLD)
-        self.window.addstr(3, 54, "q", curses.A_BOLD)
+        self.window.addstr(3, 22, "c", curses.A_BOLD)
+        self.window.addstr(3, 42, "r", curses.A_BOLD)
+        self.window.addstr(3, 62, "q", curses.A_BOLD)
 
         self.stdscr.refresh()
         self.window.refresh()
@@ -338,18 +340,20 @@ class CommandsWindow:
         self.window.box()
         self.window.addstr(0, (curses.COLS // 2) - 11, " Available commands ")
 
-        self.window.addstr(1, 2, "n: next project         p: previous project")
+        self.window.addstr(1, 2, "n: next project     p: previous proj.   h: higer prio.      l: lower prio.")
         self.window.addstr(1, 2, "n", curses.A_BOLD)
-        self.window.addstr(1, 26, "p", curses.A_BOLD)
+        self.window.addstr(1, 22, "p", curses.A_BOLD)
+        self.window.addstr(1, 42, "h", curses.A_BOLD)
+        self.window.addstr(1, 62, "l", curses.A_BOLD)
 
-        self.window.addstr(2, 2, "t: set for today        o: remove due date          a: add task to project")
+        self.window.addstr(2, 2, "t: set for today    o: remove due date  a: add task to project")
         self.window.addstr(2, 2, "t", curses.A_BOLD)
-        self.window.addstr(2, 26, "o", curses.A_BOLD)
-        self.window.addstr(2, 54, "a", curses.A_BOLD)
+        self.window.addstr(2, 22, "o", curses.A_BOLD)
+        self.window.addstr(2, 42, "a", curses.A_BOLD)
 
-        self.window.addstr(3, 2, "r: return                                           q: quit")
-        self.window.addstr(3, 2, "r", curses.A_BOLD)
-        self.window.addstr(3, 54, "q", curses.A_BOLD)
+        self.window.addstr(3, 2, "                                        r: return           q: quit")
+        self.window.addstr(3, 42, "r", curses.A_BOLD)
+        self.window.addstr(3, 62, "q", curses.A_BOLD)
 
         self.stdscr.refresh()
         self.window.refresh()
@@ -512,73 +516,82 @@ class Screen:
                 break
 
     def tasks(self):
-        current_task = 0
+        current = 0
         selected_tasks = set()
 
-        # retrieve the tasks
-        tasks = core.list_tasks(self.cursor, False)
-        tasks += core.list_tasks(self.cursor, False, list_overdue_tasks=True)
-        if not tasks:
-            self.message_window.print("No open tasks!")
-            self.state = ScreenState.HOME
-            return
-
-        # redraw windows
-        self.main_window.draw_tasks(tasks)
-        self.commands_window.draw_tasks()
-        self.progress_window.draw()
-        self.message_window.clear()
-        self.main_window.draw_cursor(0, 0)
+        redraw = True
+        include_overdue = True
+        include_closed = False
 
         # wait for commands
         while True:
+            if redraw:
+                if include_closed:
+                    tasks = core.list_tasks(self.cursor, False)
+                else:
+                    tasks = core.list_tasks(self.cursor, False, exclude_closed_tasks=True)
+                if include_overdue:
+                    tasks += core.list_tasks(self.cursor, False, list_overdue_tasks=True)
+                if not tasks:
+                    self.message_window.print("No open tasks!")
+
+                selected_tasks.clear()
+                current = 0
+
+                self.main_window.draw_tasks(tasks)
+                self.commands_window.draw_tasks()
+                self.progress_window.draw()
+                self.main_window.draw_cursor(0, 0)
+                redraw = False
+
             c = self.stdscr.getkey()
             self.message_window.clear()
 
             if c == 'q':
                 self.state = ScreenState.QUIT
                 break
+            elif c == 'r':
+                self.state = ScreenState.HOME
+                break
             if c == 'n':
-                previous_value = current_task
-                current_task = (current_task + 1) % len(tasks)
-                self.main_window.draw_cursor(current_task, previous_value)
+                previous_value = current
+                current = (current + 1) % len(tasks)
+                self.main_window.draw_cursor(current, previous_value)
             elif c == 'p':
-                previous_value = current_task
-                current_task = (current_task - 1) % len(tasks)
-                self.main_window.draw_cursor(current_task, previous_value)
+                previous_value = current
+                current = (current - 1) % len(tasks)
+                self.main_window.draw_cursor(current, previous_value)
             elif c == 's':
-                selected_tasks.add(current_task)
-                self.main_window.draw_selection(current_task)
+                selected_tasks.add(current)
+                self.main_window.draw_selection(current)
             elif c == 'u':
-                selected_tasks.discard(current_task)
-                self.main_window.draw_selection(current_task, True)
+                selected_tasks.discard(current)
+                self.main_window.draw_selection(current, True)
             elif c == 'm':
                 if not selected_tasks:
                     self.message_window.print("No selected tasks!")
                     continue
-
                 self.modify([tasks[i] for i in selected_tasks])
-                break  # we have to reload all windows after modification
-            elif c == 'r':
-                self.state = ScreenState.HOME
-                break
+                redraw = True  # we have to reload all windows after modification
             elif c == 'o':
-                tasks = core.list_tasks(self.cursor, False)
-                selected_tasks.clear()
-                current_task = 0
-                self.main_window.draw_tasks(tasks)
-                self.main_window.draw_cursor(0, 0)
+                include_overdue = False
+                redraw = True
             elif c == 'c':
-                tasks = core.list_tasks(self.cursor, False, exclude_closed_tasks=False)
-                selected_tasks.clear()
-                current_task = 0
-                self.main_window.draw_tasks(tasks)
-                self.main_window.draw_cursor(0, 0)
+                include_closed = True
+                redraw = True
             elif c == 'a':
-                if self.add_task():
-                    break  # we have to reload all windows after modification
-                else:
-                    continue  # no need to reload if task wasn't added
+                self.add_task()
+                redraw = True  # we have to reload all windows after modification
+            elif c == 'h':
+                task = tasks[current]
+                new_priority = task["priority"] + 5
+                core.modify_task(self.db, self.cursor, task["id"], priority=new_priority)
+                redraw = True
+            elif c == 'l':
+                task = tasks[current]
+                new_priority = task["priority"] - 5 if task["priority"] >= 5 else 0
+                core.modify_task(self.db, self.cursor, task["id"], priority=new_priority)
+                redraw = True
 
     def modify(self, tasks):
         ids = [t["id"] for t in tasks]
@@ -849,20 +862,27 @@ class Screen:
                 break
 
     def tasks_in_project(self, id_):
-        # retrieve the quests
-        tasks = core.list_tasks(self.cursor, project=id_)
-        tasks += core.list_tasks(self.cursor, project=id_, list_overdue_tasks=True)
-        tasks += core.list_tasks(self.cursor, project=id_, due_date="no")
+        redraw = True
+        include_overdue = True
+        include_no_date = True
         current = 0
-
-        # redraw windows
-        self.main_window.draw_tasks(tasks)
-        self.commands_window.draw_tasks_in_project()
-        self.progress_window.draw()
-        self.main_window.draw_cursor(0, 0)
 
         # wait for commands
         while True:
+            if redraw:
+                tasks = core.list_tasks(self.cursor, project=id_)
+                if include_overdue:
+                    tasks += core.list_tasks(self.cursor, project=id_, list_overdue_tasks=True)
+                if include_no_date:
+                    tasks += core.list_tasks(self.cursor, project=id_, due_date="no")
+                current = 0
+
+                self.main_window.draw_tasks(tasks)
+                self.commands_window.draw_tasks_in_project()
+                self.progress_window.draw()
+                self.main_window.draw_cursor(0, 0)
+                redraw = False
+
             c = self.stdscr.getkey()
             self.message_window.clear()
 
@@ -881,29 +901,24 @@ class Screen:
                 self.main_window.draw_cursor(current, previous_value)
             elif c == 't':
                 core.modify_task(self.db, self.cursor, tasks[current]["id"], due_date="today")
-                tasks = core.list_tasks(self.cursor, project=id_)
-                tasks += core.list_tasks(self.cursor, project=id_, list_overdue_tasks=True)
-                tasks += core.list_tasks(self.cursor, project=id_, due_date="no")
-                current = 0
-
-                self.main_window.draw_tasks(tasks)
-                self.progress_window.draw()
-                self.main_window.draw_cursor(0, 0)
+                redraw = True
             elif c == 'o':
                 core.modify_task(self.db, self.cursor, tasks[current]["id"], due_date="no")
-                tasks = core.list_tasks(self.cursor, project=id_)
-                tasks += core.list_tasks(self.cursor, project=id_, list_overdue_tasks=True)
-                tasks += core.list_tasks(self.cursor, project=id_, due_date="no")
-                current = 0
-
-                self.main_window.draw_tasks(tasks)
-                self.progress_window.draw()
-                self.main_window.draw_cursor(0, 0)
+                redraw = True
             elif c == 'a':
                 if self.add_task(project=id_, due_date="no", due_time=None):
-                    break  # we have to reload all windows after modification
+                    redraw = True  # we have to reload all windows after modification
                 else:
                     continue  # no need to reload if task wasn't added
+            elif c == 'h':
+                task = tasks[current]
+                core.modify_task(self.db, self.cursor, task["id"], priority=task["priority"] + 5)
+                redraw = True
+            elif c == 'l':
+                task = tasks[current]
+                new_priority = task["priority"] - 5 if task["priority"] >= 5 else 0
+                core.modify_task(self.db, self.cursor, task["id"], priority=new_priority)
+                redraw = True
 
 
 def main(stdscr):
