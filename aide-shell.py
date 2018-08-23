@@ -717,15 +717,17 @@ class ModifyTab(ListTab):
 class TaskListInProjectTab(TaskListTab):
     project_id = None
     tasks = []
+    current = 0
 
     def open(self):
         self.project_id = self.call_stack.top_arguments()[0]
 
-        navigation = {}
+        navigation = {
+            "m": (ModifyTab, lambda: [self.tasks[self.current]]),
+        }
         redraw = True
         include_overdue = True
         include_no_date = True
-        current = 0
 
         # wait for commands
         while True:
@@ -735,7 +737,7 @@ class TaskListInProjectTab(TaskListTab):
                     self.tasks += core.list_tasks(self.cursor, project=self.project_id, list_overdue_tasks=True)
                 if include_no_date:
                     self.tasks += core.list_tasks(self.cursor, project=self.project_id, due_date="no")
-                current = 0
+                self.current = 0
 
                 self.draw_all()
                 self.draw_cursor(0, 0)
@@ -746,28 +748,28 @@ class TaskListInProjectTab(TaskListTab):
 
             # process the command
             if c == 'n':
-                previous = current
-                current = (current + 1) % len(self.tasks)
-                self.draw_cursor(current, previous)
+                previous = self.current
+                self.current = (self.current + 1) % len(self.tasks)
+                self.draw_cursor(self.current, previous)
             elif c == 'p':
-                previous = current
-                current = (current - 1) % len(self.tasks)
-                self.draw_cursor(current, previous)
+                previous = self.current
+                self.current = (self.current - 1) % len(self.tasks)
+                self.draw_cursor(self.current, previous)
             elif c == 't':
-                core.modify_task(self.db, self.cursor, self.tasks[current]["id"], due_date="today")
+                core.modify_task(self.db, self.cursor, self.tasks[self.current]["id"], due_date="today")
                 redraw = True
             elif c == 'o':
-                core.modify_task(self.db, self.cursor, self.tasks[current]["id"], due_date="no")
+                core.modify_task(self.db, self.cursor, self.tasks[self.current]["id"], due_date="no")
                 redraw = True
             elif c == 'a':
                 self.add_task(project=self.project_id, due_date="no", due_time=None)
                 redraw = True
             elif c == 'h':
-                task = self.tasks[current]
+                task = self.tasks[self.current]
                 core.modify_task(self.db, self.cursor, task["id"], priority=task["priority"] + 5)
                 redraw = True
             elif c == 'l':
-                task = self.tasks[current]
+                task = self.tasks[self.current]
                 new_priority = task["priority"] - 5 if task["priority"] >= 5 else 0
                 core.modify_task(self.db, self.cursor, task["id"], priority=new_priority)
                 redraw = True
@@ -781,7 +783,7 @@ class TaskListInProjectTab(TaskListTab):
     def draw_commands(self):
         self.draw_generic_commands([
             [("n", "next"), ("p", "previous"), ("h", "higer prio."), ("l", "lower prio.")],
-            [("t", "set for today"), ("o", "remove due date "), ("a", "add task"), ("", "")],
+            [("t", "set for today"), ("o", "remove due date "), ("a", "add task"), ("m", "modify task")],
             [("g", "project progress"), ("", ""), ("r", "return"), ("q", "quit")],
         ])
 
