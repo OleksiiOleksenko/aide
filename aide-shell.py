@@ -256,6 +256,9 @@ class ListTab(Tab):
             )
             line += 1
 
+        if not list_:
+            line += 1
+
         self.main_window.hline(line, 0, curses.ACS_HLINE, curses.COLS - 1)
         line += 1
 
