@@ -12,7 +12,7 @@ import re
 import sqlite3
 
 import matplotlib.pyplot as plt
-
+import rpg_mod
 
 def add_task(db, cursor: sqlite3.Cursor, name, priority, time, date, weight, repeat, project: int = None):
     if time:
@@ -128,11 +128,15 @@ def modify_task(db, cursor: sqlite3.Cursor, id_: str, name: str = "", priority: 
 
 
 def close_task(db, cursor: sqlite3.Cursor, id_: str):
-    cursor.execute("SELECT name FROM tasks WHERE id = ?", (id_,))
-    name = cursor.fetchone()[0]
+    cursor.execute("SELECT name, quest FROM tasks WHERE id = ?", (id_,))
+    name, quest = cursor.fetchone()
 
     cursor.execute("UPDATE tasks SET status=0 WHERE id = ?", (id_,))
     db.commit()
+
+    if quest:
+        rpg_mod.close_quest(db, cursor, quest)
+
     return name
 
 
