@@ -134,31 +134,51 @@ class Tab:
         self.message_window.refresh()
 
     def get_input(self):
-        curses.echo()
+        self.message_window.move(1, 1)
 
-        self.message_window.addstr(1, 1, ">> ")
-        self.stdscr.refresh()
-        self.message_window.refresh()
+        s = ""
+        while True:
+            self.message_window.deleteln()
+            self.message_window.addstr(1, 1, ">> " + s)
+            self.message_window.refresh()
+            self.stdscr.refresh()
 
-        s = self.message_window.getstr(1, 5, 40)
+            c = self.message_window.getch()
+            if c == 27:
+                s = None
+                break
 
-        curses.noecho()
-        return s.decode("utf-8")
+            if c == curses.KEY_ENTER or c == 10 or c == 13:
+                break
+
+            if c == curses.KEY_BACKSPACE or c == 127 or c == curses.KEY_DC:
+                s = s[:-1]
+                continue
+
+            s += chr(c)
+
+        return s
 
     def add_task(self, due_date: str = "", due_time: str = "", project: int = None):
         self.print_message("Enter the task:")
         name = self.get_input()
+        if name is None:
+            return
         self.message_window.clear()
 
         # priority
         self.print_message("Enter task priority (0 if left blank):")
         priority = self.get_input()
+        if priority is None:
+            return
         priority = int(priority) if priority else 0
         self.message_window.clear()
 
         # weight
         self.print_message("Enter task weight (0.0 if left blank):")
         weight = self.get_input()
+        if weight is None:
+            return
         weight = float(weight) if weight else 0.0
         self.message_window.clear()
 
@@ -166,6 +186,9 @@ class Tab:
         if due_date == "":
             self.print_message("Enter due date (YYYY-MM-DD) (today if left blank):")
             due_date = self.get_input()
+            if due_date is None:
+                return
+
             if not core.validate_relative_date(due_date):
                 self.print_message("Wrong date format. Aborted.")
                 return False
@@ -175,6 +198,9 @@ class Tab:
         if due_time == "":
             self.print_message("Enter due time (HH:MM) (00:00 if left blank):")
             due_time = self.get_input()
+            if due_time is None:
+                return
+
             if not core.validate_time(due_time):
                 self.print_message("Wrong time format. Aborted.")
                 return False
@@ -183,6 +209,9 @@ class Tab:
         # repeat period
         self.print_message("Enter repetition period (no repetition if left blank):")
         repeat = self.get_input()
+        if repeat is None:
+            return
+
         if not core.validate_time_period(repeat):
             self.print_message("Wrong period format. Aborted.")
             return False
@@ -290,10 +319,14 @@ class HomeTab(Tab):
     def add_note(self):
         self.print_message("Enter the note:")
         text = self.get_input()
+        if text is None:
+            return
 
         self.clear_messages()
         self.print_message("Enter the date (YYYY-MM-DD):")
         date = self.get_input()
+        if date is None:
+            return
         if not core.validate_date(date):
             self.print_message("Wrong date format. Aborted.")
             return
@@ -345,7 +378,7 @@ class TaskListTab(ListTab):
         while True:
             if redraw:
                 if include_closed:
-                    self.tasks = core.list_tasks(self.cursor, False)
+                    self.tasks = core.list_tasks(self.cursor, False, exclude_closed_tasks=False)
                 else:
                     self.tasks = core.list_tasks(self.cursor, False, exclude_closed_tasks=True)
                 if include_overdue:
