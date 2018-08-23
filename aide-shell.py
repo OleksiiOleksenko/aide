@@ -547,7 +547,6 @@ class ProjectListTab(ListTab):
             if redraw:
                 self.projects = project_mod.list_projects(self.cursor)
 
-                current = 0
                 self.draw_all()
                 self.draw_cursor(0, 0)
                 redraw = False
@@ -559,12 +558,12 @@ class ProjectListTab(ListTab):
             # process the command
             if c == 'n':
                 previous = self.current_project
-                current = (self.current_project + 1) % len(self.projects)
-                self.draw_cursor(current, previous)
+                self.current_project = (self.current_project + 1) % len(self.projects)
+                self.draw_cursor(self.current_project, previous)
             elif c == 'p':
                 previous = self.current_project
-                current = (self.current_project - 1) % len(self.projects)
-                self.draw_cursor(current, previous)
+                self.current_project = (self.current_project - 1) % len(self.projects)
+                self.draw_cursor(self.current_project, previous)
             elif c == 'l':
                 # TODO: self.tasks_in_project(projects[current]["id"])
                 pass
@@ -738,9 +737,7 @@ class TaskListInProjectTab(TaskListTab):
                     self.tasks += core.list_tasks(self.cursor, project=self.project_id, due_date="no")
                 current = 0
 
-                self.main_window.draw_tasks(self.tasks)
-                self.commands_window.draw_tasks_in_project()
-                self.progress_window.draw()
+                self.draw_all()
                 self.draw_cursor(0, 0)
                 redraw = False
 
@@ -774,12 +771,18 @@ class TaskListInProjectTab(TaskListTab):
                 new_priority = task["priority"] - 5 if task["priority"] >= 5 else 0
                 core.modify_task(self.db, self.cursor, task["id"], priority=new_priority)
                 redraw = True
+            elif c == 'g':
+                total, closed = project_mod.get_project_progress(self.cursor, self.project_id)
+                self.print_message("Project progress: {} / {}".format(closed, total))
+
+            if self.process_navigation_commands(c, navigation):
+                return self.call_stack
 
     def draw_commands(self):
         self.draw_generic_commands([
             [("n", "next"), ("p", "previous"), ("h", "higer prio."), ("l", "lower prio.")],
             [("t", "set for today"), ("o", "remove due date "), ("a", "add task"), ("", "")],
-            [("", ""), ("", ""), ("r", "return"), ("q", "quit")],
+            [("g", "project progress"), ("", ""), ("r", "return"), ("q", "quit")],
         ])
 
 

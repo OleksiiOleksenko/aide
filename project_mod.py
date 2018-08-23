@@ -35,3 +35,12 @@ def modify_project(db, cursor: sqlite3.Cursor, id_: str, name: str = None, prior
 
     cursor.execute(query, query_arguments)
     db.commit()
+
+
+def get_project_progress(cursor: sqlite3.Cursor, id_: int):
+    cursor.execute("SELECT SUM(weight) FROM tasks WHERE project=?", (id_,))
+    total = cursor.fetchone()[0]
+
+    cursor.execute("SELECT SUM(weight) FROM tasks WHERE project=? AND status = 0", (id_,))
+    closed = cursor.fetchone()[0]
+    return total, closed
