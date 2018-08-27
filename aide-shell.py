@@ -302,7 +302,7 @@ class HomeTab(Tab):
 
                 if self.ask_confirmation("Do you want to close the current task?"):
                     core.close_task(self.db, self.cursor, self.task["id"])
-                    redraw = True
+                redraw = True
             elif c == 'd':
                 if not self.task:
                     self.print_message("No task to delete")
@@ -310,7 +310,7 @@ class HomeTab(Tab):
 
                 if self.ask_confirmation("Do you want to delete the current task?"):
                     core.delete_task(self.db, self.cursor, self.task["id"])
-                    redraw = True
+                redraw = True
             elif c == 'n':
                 self.add_note()
             elif c == 'r':
@@ -323,12 +323,14 @@ class HomeTab(Tab):
         self.print_message("Enter the note:")
         text = self.get_input()
         if text is None:
+            self.clear_messages()
             return
 
         self.clear_messages()
         self.print_message("Enter the date (YYYY-MM-DD):")
         date = self.get_input()
         if date is None:
+            self.clear_messages()
             return
         if not core.validate_date(date):
             self.print_message("Wrong date format. Aborted.")
@@ -534,7 +536,7 @@ class AwardsListTab(ListTab):
 
             # wait for commands
             c = self.stdscr.getkey()
-            self.message_window.clear()
+            self.clear_messages()
 
             # process the command
             if c == 'n':
