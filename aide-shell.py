@@ -102,6 +102,11 @@ class Tab:
         self.stdscr.refresh()
         self.message_window.refresh()
 
+    def print_help(self, text: str):
+        self.message_window.addstr(1, 1, text)
+        self.stdscr.refresh()
+        self.message_window.refresh()
+
     def ask_confirmation(self, text: str, default=True):
         valid = {"y": True, "n": False}
 
@@ -134,12 +139,12 @@ class Tab:
         self.message_window.refresh()
 
     def get_input(self):
-        self.message_window.move(1, 1)
+        self.message_window.move(2, 1)
 
         s = ""
         while True:
             self.message_window.deleteln()
-            self.message_window.addstr(1, 1, ">> " + s)
+            self.message_window.addstr(2, 1, ">> " + s)
             self.message_window.refresh()
             self.stdscr.refresh()
 
@@ -237,6 +242,8 @@ class Tab:
 
 
 class ListTab(Tab):
+    priority_step = 10
+
     def draw_list(self, list_, columns_header: str, column_format: str, column_fields):
         self.main_window.erase()
 
@@ -313,7 +320,7 @@ class HomeTab(Tab):
                 redraw = True
             elif c == 'n':
                 self.add_note()
-            elif c == 'r':
+            elif c == 's':
                 core.productivity_plot(self.cursor)
 
             if self.process_navigation_commands(c, navigation, enable_return=False):
@@ -362,7 +369,7 @@ class HomeTab(Tab):
     def draw_commands(self):
         self.draw_generic_commands([
             [("a", "add task"), ("m", "modify current"), ("c", "close current"), ("d", "delete current")],
-            [("l", "list tasks"), ("n", "add note"), ("r", "show reports"), ("p", "projects")],
+            [("l", "list tasks"), ("n", "add note"), ("s", "show reports"), ("p", "projects")],
             [("u", "quests"), ("w", "awards"), ("", ""), ("q", "quit")],
         ])
 
@@ -428,12 +435,12 @@ class TaskListTab(ListTab):
                 redraw = True
             elif c == 'h':
                 task = self.tasks[current]
-                new_priority = task["priority"] + 5
+                new_priority = task["priority"] + self.priority_step
                 core.modify_task(self.db, self.cursor, task["id"], priority=new_priority)
                 redraw = True
             elif c == 'l':
                 task = self.tasks[current]
-                new_priority = task["priority"] - 5 if task["priority"] >= 5 else 0
+                new_priority = task["priority"] - self.priority_step if task["priority"] >= self.priority_step else 0
                 core.modify_task(self.db, self.cursor, task["id"], priority=new_priority)
                 redraw = True
 
@@ -496,6 +503,9 @@ class QuestsListTab(ListTab):
                     message = "Hey! You leveled up!!!"
                 self.print_message(message)
                 redraw = True
+            elif c == 'a':
+                self.add_quest()
+                redraw = True
 
             if self.process_navigation_commands(c, navigation):
                 return self.call_stack
@@ -511,9 +521,43 @@ class QuestsListTab(ListTab):
     def draw_commands(self):
         self.draw_generic_commands([
             [("n", "next quest"), ("p", "previous quest"), ("", ""), ("", "")],
-            [("c", "complete quest"), ("", ""), ("", ""), ("", "")],
+            [("c", "complete quest"), ("a", "new quest"), ("", ""), ("", "")],
             [("", ""), ("", ""), ("r", "return"), ("q", "quit")],
         ])
+
+    def add_quest(self):
+        self.print_message("Enter the quest name:")
+        name = self.get_input()
+        if name is None:
+            return
+        self.message_window.clear()
+
+        self.print_message("Enter the awarded xp (0 if left blank):")
+        xp = self.get_input()
+        if xp is None:
+            return
+        xp = int(xp) if xp else 0
+        self.message_window.clear()
+
+        self.print_message("Enter the gold reward (0 if left blank):")
+        gold = self.get_input()
+        if gold is None:
+            return
+        gold = int(gold) if gold else 0
+        self.message_window.clear()
+
+        skills = rpg_mod.get_skills(self.cursor)
+        skill_list = ", ".join([str(s["id"]) + ": " + s["name"] for s in skills])
+        self.print_help("Available: " + skill_list)
+        self.print_message("Enter the trained skill id:")
+        skill = self.get_input()
+        if skill is None:
+            return
+        skill = int(skill) if skill else 0
+        self.message_window.clear()
+
+        rpg_mod.add_quest(self.db, self.cursor, name, xp, gold, skill)
+        return True
 
 
 class AwardsListTab(ListTab):
@@ -551,9 +595,29 @@ class AwardsListTab(ListTab):
                 result = rpg_mod.claim_award(self.db, self.cursor, self.awards[current]["id"])
                 self.print_message("{} costed you {} gold".format(result[0], result[1]))
                 redraw = True
+            elif c == 'a':
+                self.add_award()
+                redraw = True
 
             if self.process_navigation_commands(c, navigation):
                 return self.call_stack
+
+    def add_award(self):
+        self.print_message("Enter the award name:")
+        name = self.get_input()
+        if name is None:
+            return
+        self.message_window.clear()
+
+        self.print_message("Enter the award price (0 if left blank):")
+        price = self.get_input()
+        if price is None:
+            return
+        price = int(price) if price else 0
+        self.message_window.clear()
+
+        rpg_mod.add_award(self.db, self.cursor, name, price)
+        return True
 
     def draw_main(self):
         self.draw_list(
@@ -566,7 +630,7 @@ class AwardsListTab(ListTab):
     def draw_commands(self):
         self.draw_generic_commands([
             [("n", "next award"), ("p", "previous award"), ("", ""), ("", "")],
-            [("c", "claim award"), ("", ""), ("", ""), ("", "")],
+            [("c", "claim award"), ("a", "new award"), ("", ""), ("", "")],
             [("", ""), ("", ""), ("r", "return"), ("q", "quit")],
         ])
 
@@ -804,11 +868,11 @@ class TaskListInProjectTab(TaskListTab):
                 redraw = True
             elif c == 'h':
                 task = self.tasks[self.current]
-                core.modify_task(self.db, self.cursor, task["id"], priority=task["priority"] + 5)
+                core.modify_task(self.db, self.cursor, task["id"], priority=task["priority"] + self.priority_step)
                 redraw = True
             elif c == 'l':
                 task = self.tasks[self.current]
-                new_priority = task["priority"] - 5 if task["priority"] >= 5 else 0
+                new_priority = task["priority"] - self.priority_step if task["priority"] >= self.priority_step else 0
                 core.modify_task(self.db, self.cursor, task["id"], priority=new_priority)
                 redraw = True
             elif c == 'g':
@@ -842,7 +906,7 @@ def main(stdscr):
 
     # prepare windows
     main_window = curses.newwin(30, curses.COLS - 1, 1, 0)
-    message_window = curses.newwin(2, curses.COLS - 1, curses.LINES - 8, 0)
+    message_window = curses.newwin(3, curses.COLS - 1, curses.LINES - 9, 0)
     commands_window = curses.newwin(5, curses.COLS - 1, curses.LINES - 6, 0)
     progress_window = curses.newwin(3, 25, curses.LINES - 1, 0)
     character_window = curses.newwin(3, 42, curses.LINES - 1, curses.COLS - 42)

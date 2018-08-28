@@ -1,6 +1,12 @@
 import sqlite3
 
 
+def add_quest(db, cursor: sqlite3.Cursor, name: str, xp: int, gold_reward: int, trained_skill: int):
+    cursor.execute("INSERT INTO quests(name, xp, gold_reward, trained_skill) VALUES (?, ?, ?, ?)",
+                   (name, xp, gold_reward, trained_skill))
+    db.commit()
+
+
 def get_quests(cursor: sqlite3.Cursor):
     cursor.execute("SELECT id, xp, gold_reward, name FROM quests")
     quests = cursor.fetchall()
@@ -49,6 +55,12 @@ def close_quest(db, cursor: sqlite3.Cursor, id_: str):
     return quest[0], levelup, skill_increased, skill[0], str(skill[1] + 1)
 
 
+def add_award(db, cursor: sqlite3.Cursor, name: str, price: int):
+    cursor.execute("INSERT INTO awards(name, price) VALUES (?, ?)",
+                   (name, price))
+    db.commit()
+
+
 def get_awards(cursor: sqlite3.Cursor):
     cursor.execute("SELECT id, name, price FROM awards")
     awards = cursor.fetchall()
@@ -81,3 +93,14 @@ def get_character_stats(cursor: sqlite3.Cursor):
         "xp": character[2],
         "xp_for_next_level": character[3]
     }
+
+
+def get_skills(cursor: sqlite3.Cursor):
+    cursor.execute("SELECT id, name, value, xp FROM skills")
+    skills = cursor.fetchall()
+    return [{
+        "id": s[0],
+        "name": s[1],
+        "value": s[2],
+        "xp": s[3]
+    } for s in skills]

@@ -153,7 +153,7 @@ def add_note(db, cursor: sqlite3.Cursor, date: str, text: str):
 
 
 def productivity_plot(cursor: sqlite3.Cursor):
-    cursor.execute('SELECT sum(weight),due_date FROM tasks WHERE status=0 GROUP BY due_date')
+    cursor.execute('SELECT sum(weight),due_date FROM tasks WHERE status=0 AND due_date is not NULL GROUP BY due_date')
     data = cursor.fetchall()
 
     if len(data) <= 2:
