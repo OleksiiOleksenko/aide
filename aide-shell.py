@@ -679,20 +679,27 @@ class ProjectListTab(ListTab):
                                            priority=priority)
                 redraw = True
             elif c == 'a':
-                self.print_message("Enter the name:")
-                name = self.get_input()
-                self.clear_messages()
-
-                self.print_message("Enter priority (0 if left blank):")
-                priority = self.get_input()
-                priority = int(priority) if priority else 0
-                self.clear_messages()
-
-                project_mod.add_project(self.db, self.cursor, name, priority)
+                self.add_project()
                 redraw = True
 
             if self.process_navigation_commands(c, navigation):
                 return self.call_stack
+
+    def add_project(self):
+        self.print_message("Enter the name:")
+        name = self.get_input()
+        if name is None:
+            return
+        self.clear_messages()
+
+        self.print_message("Enter priority (0 if left blank):")
+        priority = self.get_input()
+        if priority is None:
+            return
+        priority = int(priority) if priority else 0
+        self.clear_messages()
+
+        project_mod.add_project(self.db, self.cursor, name, priority)
 
     def draw_main(self):
         self.draw_list(
