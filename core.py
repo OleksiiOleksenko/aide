@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 import rpg_mod
 
 
-def add_task(db, cursor: sqlite3.Cursor, name, priority, time, date, weight, repeat=None, project=None):
+def add_task(db, cursor: sqlite3.Cursor, name, priority, time, date, weight, repeat=None, project=None, quest=None):
     if time:
         priority += 100
 
@@ -27,9 +27,9 @@ def add_task(db, cursor: sqlite3.Cursor, name, priority, time, date, weight, rep
     if project is None:
         project = 1
 
-    cursor.execute("INSERT INTO tasks(name, priority, due_time, due_date, weight, repeat_period, project) VALUES "
-                   "(?, ?, " + local_to_utc("?") + "," + date + ", ?, ?, ?)",
-                   (name, priority, time, weight, repeat, project))
+    cursor.execute("INSERT INTO tasks(name, priority, due_time, due_date, weight, repeat_period, project, quest) VALUES"
+                   " (?, ?, " + local_to_utc("?") + "," + date + ", ?, ?, ?, ?)",
+                   (name, priority, time, weight, repeat, project, quest))
     db.commit()
 
 

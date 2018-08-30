@@ -173,7 +173,7 @@ class Tab:
 
         return s, status
 
-    def add_task(self, project: int = None):
+    def add_task(self, project: int = 1):
         params = [
             ["", "Enter the task", lambda x: True, str],
             [0.0, "Enter task weight (0.0 if left blank)", lambda x: True, float],
@@ -182,6 +182,7 @@ class Tab:
             ["", "Enter due time (HH:MM) (00:00 if left blank)", core.validate_time, str],
             ["", "Enter repetition period (no repetition if left blank)", core.validate_time_period, str],
             [project, "Enter project", lambda x: True, int],
+            [None, "Enter related quest", lambda x: True, int],
         ]
 
         for i, p in enumerate(params):
@@ -197,8 +198,8 @@ class Tab:
             params[i][0] = p[3](text)
             self.message_window.clear()
 
-        core.add_task(self.db, self.cursor,
-                      params[0][0], params[2][0], params[4][0], params[3][0], params[1][0], params[5][0], params[6][0])
+        core.add_task(self.db, self.cursor, params[0][0], params[2][0], params[4][0], params[3][0], params[1][0],
+                      params[5][0], params[6][0], params[7][0])
         return
 
     def process_navigation_commands(self, command: str, navigation: dict, enable_return: bool = True):
@@ -304,15 +305,15 @@ class HomeTab(Tab):
 
     def add_note(self):
         self.print_message("Enter the note:")
-        text = self.get_input()
-        if text is None:
+        text, status = self.get_input()
+        if status == "cancel":
             self.clear_messages()
             return
 
         self.clear_messages()
         self.print_message("Enter the date (YYYY-MM-DD):")
-        date = self.get_input()
-        if date is None:
+        date, status = self.get_input()
+        if status == "cancel":
             self.clear_messages()
             return
         if not core.validate_date(date):
@@ -353,12 +354,14 @@ class HomeTab(Tab):
 class TaskListTab(ListTab):
     tasks = []
     selected_tasks = set()
+    current = 0
 
     def open(self):
         navigation = {
-            "m": (ModifyTab, lambda: [self.tasks[i] for i in self.selected_tasks] if self.selected_tasks else [])
+            "m": (ModifyTab,
+                  lambda:
+                  [self.tasks[i] for i in self.selected_tasks] if self.selected_tasks else [self.tasks[self.current]])
         }
-        current = 0
         redraw = True
         include_overdue = True
         include_closed = False
@@ -374,7 +377,7 @@ class TaskListTab(ListTab):
                 if not self.tasks:
                     self.print_message("No open tasks!")
 
-                current = 0
+                self.current = 0
                 self.selected_tasks.clear()
 
                 self.draw_all()
@@ -387,19 +390,19 @@ class TaskListTab(ListTab):
 
             # process the command
             if c == 'n':
-                previous = current
-                current = (current + 1) % len(self.tasks)
-                self.draw_cursor(current, previous)
+                previous = self.current
+                self.current = (self.current + 1) % len(self.tasks)
+                self.draw_cursor(self.current, previous)
             elif c == 'p':
-                previous = current
-                current = (current - 1) % len(self.tasks)
-                self.draw_cursor(current, previous)
+                previous = self.current
+                self.current = (self.current - 1) % len(self.tasks)
+                self.draw_cursor(self.current, previous)
             elif c == 's':
-                self.selected_tasks.add(current)
-                self.draw_selection(current)
+                self.selected_tasks.add(self.current)
+                self.draw_selection(self.current)
             elif c == 'u':
-                self.selected_tasks.discard(current)
-                self.draw_selection(current, True)
+                self.selected_tasks.discard(self.current)
+                self.draw_selection(self.current, True)
             elif c == 'o':
                 include_overdue = False
                 redraw = True
@@ -410,12 +413,12 @@ class TaskListTab(ListTab):
                 self.add_task()
                 redraw = True
             elif c == 'h':
-                task = self.tasks[current]
+                task = self.tasks[self.current]
                 new_priority = task["priority"] + self.priority_step
                 core.modify_task(self.db, self.cursor, task["id"], priority=new_priority)
                 redraw = True
             elif c == 'l':
-                task = self.tasks[current]
+                task = self.tasks[self.current]
                 new_priority = task["priority"] - self.priority_step if task["priority"] >= self.priority_step else 0
                 core.modify_task(self.db, self.cursor, task["id"], priority=new_priority)
                 redraw = True
@@ -503,21 +506,21 @@ class QuestsListTab(ListTab):
 
     def add_quest(self):
         self.print_message("Enter the quest name:")
-        name = self.get_input()
-        if name is None:
+        name, status = self.get_input()
+        if status == "cancel":
             return
         self.message_window.clear()
 
         self.print_message("Enter the awarded xp (0 if left blank):")
-        xp = self.get_input()
-        if xp is None:
+        xp, status = self.get_input()
+        if status == "cancel":
             return
         xp = int(xp) if xp else 0
         self.message_window.clear()
 
         self.print_message("Enter the gold reward (0 if left blank):")
-        gold = self.get_input()
-        if gold is None:
+        gold, status = self.get_input()
+        if status == "cancel":
             return
         gold = int(gold) if gold else 0
         self.message_window.clear()
@@ -526,7 +529,9 @@ class QuestsListTab(ListTab):
         skill_list = ", ".join([str(s["id"]) + ": " + s["name"] for s in skills])
         self.print_help("Available: " + skill_list)
         self.print_message("Enter the trained skill id:")
-        skill = self.get_input()
+        skill, status = self.get_input()
+        if status == "cancel":
+            return
         if skill is None:
             return
         skill = int(skill) if skill else 0
@@ -580,13 +585,17 @@ class AwardsListTab(ListTab):
 
     def add_award(self):
         self.print_message("Enter the award name:")
-        name = self.get_input()
+        name, status = self.get_input()
+        if status == "cancel":
+            return
         if name is None:
             return
         self.message_window.clear()
 
         self.print_message("Enter the award price (0 if left blank):")
-        price = self.get_input()
+        price, status = self.get_input()
+        if status == "cancel":
+            return
         if price is None:
             return
         price = int(price) if price else 0
@@ -647,8 +656,8 @@ class ProjectListTab(ListTab):
                 pass
             elif c == 'e':
                 self.print_message("Enter priority:")
-                priority = self.get_input()
-                if not priority:
+                priority, status = self.get_input()
+                if status == "cancel":
                     self.print_message("Aborted")
                     continue
                 project_mod.modify_project(self.db, self.cursor, self.projects[self.current_project]["id"],
@@ -663,14 +672,14 @@ class ProjectListTab(ListTab):
 
     def add_project(self):
         self.print_message("Enter the name:")
-        name = self.get_input()
-        if name is None:
+        name, status = self.get_input()
+        if status == "cancel":
             return
         self.clear_messages()
 
         self.print_message("Enter priority (0 if left blank):")
-        priority = self.get_input()
-        if priority is None:
+        priority, status = self.get_input()
+        if status == "cancel":
             return
         priority = int(priority) if priority else 0
         self.clear_messages()
@@ -714,35 +723,48 @@ class ModifyTab(ListTab):
             # process the command
             if c == 'n':
                 self.print_message("Enter new name:")
-                name = self.get_input()
+                name, status = self.get_input()
+                if status == "cancel":
+                    continue
                 for i, id_ in enumerate(ids):
                     core.modify_task(self.db, self.cursor, id_=id_, name=name)
                     self.tasks[i]["name"] = name
                 redraw = True
             elif c == 's':
                 self.print_message("Enter new status, 0 - closed, 1 - open:")
-                status = int(self.get_input())
+                st, status = self.get_input()
+                if status == "cancel":
+                    continue
+                st = int(st)
                 for i, id_ in enumerate(ids):
                     core.modify_task(self.db, self.cursor, id_=id_, status=status)
                     self.tasks[i]["status"] = status
                 redraw = True
             elif c == 'p':
                 self.print_message("Enter new priority:")
-                priority = int(self.get_input())
+                priority, status = self.get_input()
+                if status == "cancel":
+                    continue
+                priority = int(st)
                 for i, id_ in enumerate(ids):
                     core.modify_task(self.db, self.cursor, id_=id_, priority=priority)
                     self.tasks[i]["priority"] = priority
                 redraw = True
             elif c == 'w':
                 self.print_message("Enter new weight:")
-                weight = float(self.get_input())
+                weight, status = self.get_input()
+                if status == "cancel":
+                    continue
+                weight = int(st)
                 for i, id_ in enumerate(ids):
                     core.modify_task(self.db, self.cursor, id_=id_, weight=weight)
                     self.tasks[i]["weight"] = weight
                 redraw = True
             elif c == 't':
                 self.print_message("Enter new time (HH:MM):")
-                time = self.get_input()
+                time, status = self.get_input()
+                if status == "cancel":
+                    continue
                 if not core.validate_time(time):
                     self.print_message("Wrong time format. Aborted.")
                     continue
@@ -753,7 +775,9 @@ class ModifyTab(ListTab):
                 redraw = True
             elif c == 'a':
                 self.print_message("Enter new due date (YYYY-MM-DD):")
-                date = self.get_input()
+                date, status = self.get_input()
+                if status == "cancel":
+                    continue
                 if not core.validate_relative_date(date):
                     self.print_message("Wrong date format. Aborted.")
                     continue
@@ -765,6 +789,8 @@ class ModifyTab(ListTab):
             elif c == 'e':
                 self.print_message("Enter repetition period (no repetition if left blank):")
                 repeat = self.get_input()
+                if repeat == "cancel":
+                    continue
                 if not core.validate_time_period(repeat):
                     self.print_message("Wrong period format. Aborted.")
                     continue
