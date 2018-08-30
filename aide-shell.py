@@ -660,6 +660,7 @@ class ProjectListTab(ListTab):
                 if status == "cancel":
                     self.print_message("Aborted")
                     continue
+                priority = int(priority)
                 project_mod.modify_project(self.db, self.cursor, self.projects[self.current_project]["id"],
                                            priority=priority)
                 redraw = True
@@ -737,7 +738,7 @@ class ModifyTab(ListTab):
                     continue
                 st = int(st)
                 for i, id_ in enumerate(ids):
-                    core.modify_task(self.db, self.cursor, id_=id_, status=status)
+                    core.modify_task(self.db, self.cursor, id_=id_, status=st)
                     self.tasks[i]["status"] = status
                 redraw = True
             elif c == 'p':
@@ -745,7 +746,7 @@ class ModifyTab(ListTab):
                 priority, status = self.get_input()
                 if status == "cancel":
                     continue
-                priority = int(st)
+                priority = int(priority)
                 for i, id_ in enumerate(ids):
                     core.modify_task(self.db, self.cursor, id_=id_, priority=priority)
                     self.tasks[i]["priority"] = priority
@@ -755,7 +756,7 @@ class ModifyTab(ListTab):
                 weight, status = self.get_input()
                 if status == "cancel":
                     continue
-                weight = int(st)
+                weight = int(weight)
                 for i, id_ in enumerate(ids):
                     core.modify_task(self.db, self.cursor, id_=id_, weight=weight)
                     self.tasks[i]["weight"] = weight
@@ -788,8 +789,8 @@ class ModifyTab(ListTab):
                 redraw = True
             elif c == 'e':
                 self.print_message("Enter repetition period (no repetition if left blank):")
-                repeat = self.get_input()
-                if repeat == "cancel":
+                repeat, status = self.get_input()
+                if status == "cancel":
                     continue
                 if not core.validate_time_period(repeat):
                     self.print_message("Wrong period format. Aborted.")
