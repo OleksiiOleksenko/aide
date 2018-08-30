@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import curses
+import curses.ascii
 import sqlite3
 
 import core
@@ -138,10 +139,11 @@ class Tab:
         self.stdscr.refresh()
         self.message_window.refresh()
 
-    def get_input(self):
+    def get_input(self, default: str = "") -> (str, str):
         self.message_window.move(2, 1)
 
         s = ""
+        status = "ok"
         while True:
             self.message_window.deleteln()
             self.message_window.addstr(2, 1, ">> " + s)
@@ -150,10 +152,14 @@ class Tab:
 
             c = self.message_window.getch()
             if c == 27:
-                s = None
+                status = "cancel"
                 break
 
-            if c == curses.KEY_ENTER or c == 10 or c == 13:
+            if c == curses.ascii.ACK:  # ^f
+                status = "finish"
+                break
+
+            if c == curses.KEY_ENTER or c == 10 or c == 13:  # Enter
                 break
 
             if c == curses.KEY_BACKSPACE or c == 127 or c == curses.KEY_DC:
@@ -162,68 +168,38 @@ class Tab:
 
             s += chr(c)
 
-        return s
+        if not s:
+            s = default
 
-    def add_task(self, due_date: str = "", due_time: str = "", project: int = None):
-        self.print_message("Enter the task:")
-        name = self.get_input()
-        if name is None:
-            return
-        self.message_window.clear()
+        return s, status
 
-        # priority
-        self.print_message("Enter task priority (0 if left blank):")
-        priority = self.get_input()
-        if priority is None:
-            return
-        priority = int(priority) if priority else 0
-        self.message_window.clear()
+    def add_task(self, project: int = None):
+        params = [
+            ["", "Enter the task", lambda x: True, str],
+            [0.0, "Enter task weight (0.0 if left blank)", lambda x: True, float],
+            [0, "Enter task priority (0 if left blank)", lambda x: True, int],
+            ["", "Enter due date (YYYY-MM-DD) (today if left blank)", core.validate_relative_date, str],
+            ["", "Enter due time (HH:MM) (00:00 if left blank)", core.validate_time, str],
+            ["", "Enter repetition period (no repetition if left blank)", core.validate_time_period, str],
+            [project, "Enter project", lambda x: True, int],
+        ]
 
-        # weight
-        self.print_message("Enter task weight (0.0 if left blank):")
-        weight = self.get_input()
-        if weight is None:
-            return
-        weight = float(weight) if weight else 0.0
-        self.message_window.clear()
-
-        # due date
-        if due_date == "":
-            self.print_message("Enter due date (YYYY-MM-DD) (today if left blank):")
-            due_date = self.get_input()
-            if due_date is None:
+        for i, p in enumerate(params):
+            self.print_message(p[1] + ":")
+            text, status = self.get_input(p[0])
+            if status == "cancel":
                 return
-
-            if not core.validate_relative_date(due_date):
-                self.print_message("Wrong date format. Aborted.")
-                return False
+            if status == "finish":
+                break
+            if not p[2](text):
+                self.print_message("Wrong format. Aborted.")
+                return
+            params[i][0] = p[3](text)
             self.message_window.clear()
 
-        # due time
-        if due_time == "":
-            self.print_message("Enter due time (HH:MM) (00:00 if left blank):")
-            due_time = self.get_input()
-            if due_time is None:
-                return
-
-            if not core.validate_time(due_time):
-                self.print_message("Wrong time format. Aborted.")
-                return False
-            self.message_window.clear()
-
-        # repeat period
-        self.print_message("Enter repetition period (no repetition if left blank):")
-        repeat = self.get_input()
-        if repeat is None:
-            return
-
-        if not core.validate_time_period(repeat):
-            self.print_message("Wrong period format. Aborted.")
-            return False
-        self.message_window.clear()
-
-        core.add_task(self.db, self.cursor, name, priority, due_time, due_date, weight, repeat, project=project)
-        return True
+        core.add_task(self.db, self.cursor,
+                      params[0][0], params[2][0], params[4][0], params[3][0], params[1][0], params[5][0], params[6][0])
+        return
 
     def process_navigation_commands(self, command: str, navigation: dict, enable_return: bool = True):
         if command == 'q':
@@ -871,7 +847,7 @@ class TaskListInProjectTab(TaskListTab):
                 core.modify_task(self.db, self.cursor, self.tasks[self.current]["id"], due_date="no")
                 redraw = True
             elif c == 'a':
-                self.add_task(project=self.project_id, due_date="no", due_time=None)
+                self.add_task(project=self.project_id)
                 redraw = True
             elif c == 'h':
                 task = self.tasks[self.current]
