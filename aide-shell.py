@@ -756,7 +756,7 @@ class ModifyTab(ListTab):
                 weight, status = self.get_input()
                 if status == "cancel":
                     continue
-                weight = int(weight)
+                weight = float(weight)
                 for i, id_ in enumerate(ids):
                     core.modify_task(self.db, self.cursor, id_=id_, weight=weight)
                     self.tasks[i]["weight"] = weight
