@@ -25,14 +25,13 @@ END;
 CREATE TRIGGER "repeat_task_workdays"
     AFTER UPDATE
     ON tasks
-    FOR EACH ROW WHEN (old.status = 1 AND new.status = 0 AND old.repeat_period is not null AND old.repeat_period == 'workdays' AND old.repeat_period != '')
+    FOR EACH ROW WHEN (old.status = 1 AND new.status = 0 AND old.repeat_period is not null AND old.repeat_period == 'workdays')
 BEGIN
     INSERT INTO tasks(name, priority, due_time, weight, repeat_period, quest, due_date)
     VALUES (old.name, old.priority, old.due_time, old.weight, old.repeat_period, old.quest,
             CASE strftime("%w", date(old.due_date))
-                WHEN 5 THEN date(old.due_date,'weekday 1')
+                WHEN '5' THEN date(old.due_date,'weekday 1')
                 ELSE date(old.due_date,'+1 days')
             END
            );
 END;
-
