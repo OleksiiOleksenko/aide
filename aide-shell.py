@@ -226,18 +226,20 @@ class ListTab(Tab):
 
         # table header
         self.main_window.addstr(1, 1, "Name")
-        self.main_window.addstr(1, curses.COLS - len(columns_header) - 1, columns_header)
+        if columns_header:
+            self.main_window.addstr(1, curses.COLS - len(columns_header) - 1, columns_header)
         self.main_window.hline(2, 0, curses.ACS_HLINE, curses.COLS - 1)
 
         # list
         line = 3
         for element in list_:
             self.main_window.addstr(line, 2, element["name"])
-            self.main_window.addstr(
-                line,
-                curses.COLS - len(columns_header) - 1,
-                column_format.format(*(element[f] for f in column_fields))
-            )
+            if column_fields:
+                self.main_window.addstr(
+                    line,
+                    curses.COLS - len(columns_header) - 1,
+                    column_format.format(*(element[f] for f in column_fields))
+                )
             line += 1
 
         if not list_:
@@ -259,7 +261,8 @@ class HomeTab(Tab):
             "u": (QuestsListTab, lambda: []),
             "w": (AwardsListTab, lambda: []),
             "p": (ProjectListTab, lambda: []),
-            "m": (ModifyTab, lambda: [self.task] if self.task else [])
+            "m": (ModifyTab, lambda: [self.task] if self.task else []),
+            "s": (ReportTab, lambda: []),
         }
 
         redraw = True
@@ -297,8 +300,6 @@ class HomeTab(Tab):
                 redraw = True
             elif c == 'n':
                 self.add_note()
-            elif c == 's':
-                core.productivity_plot(self.cursor)
 
             if self.process_navigation_commands(c, navigation, enable_return=False):
                 return self.call_stack
@@ -448,7 +449,6 @@ class TaskListTab(ListTab):
         else:
             task_list = [self.tasks[self.current]]
         return task_list
-
 
 
 class QuestsListTab(ListTab):
@@ -660,9 +660,6 @@ class ProjectListTab(ListTab):
                 previous = self.current_project
                 self.current_project = (self.current_project - 1) % len(self.projects)
                 self.draw_cursor(self.current_project, previous)
-            elif c == 'l':
-                # TODO: self.tasks_in_project(projects[current]["id"])
-                pass
             elif c == 'e':
                 self.print_message("Enter priority:")
                 priority, status = self.get_input()
@@ -910,6 +907,53 @@ class TaskListInProjectTab(TaskListTab):
     def call_modify(self):
         self.call_stack.top_arguments()[1] = self.current
         return [self.tasks[self.current]]
+
+
+class ReportTab(ListTab):
+    projects = []
+    current = 0
+
+    def open(self):
+        navigation = {}
+        self.projects = project_mod.list_projects(self.cursor)
+        self.projects.append({"name": "All", "id": None})
+        redraw = True
+
+        while True:
+            if redraw:
+                self.draw_all()
+                self.draw_cursor(self.current, 0)
+                redraw = False
+
+            # wait for commands
+            c = self.stdscr.getkey()
+            self.message_window.clear()
+
+            if c == 'n':
+                previous = self.current
+                self.current = (self.current + 1) % len(self.projects)
+                self.draw_cursor(self.current, previous)
+            elif c == 'p':
+                previous = self.current
+                self.current = (self.current - 1) % len(self.projects)
+                self.draw_cursor(self.current, previous)
+            elif c == 'd':
+                status = core.productivity_plot(self.cursor, [self.projects[self.current]["id"]])
+                if not status:
+                    self.print_message("Not enough data to build a plot!")
+
+            if self.process_navigation_commands(c, navigation):
+                return self.call_stack
+
+    def draw_main(self):
+        self.draw_list(self.projects, "", "", [])
+
+    def draw_commands(self):
+        self.draw_generic_commands([
+            [("n", "next project"), ("p", "previous project"), ("", ""), ("", "")],
+            [("d", "draw plot"), ("", ""), ("", ""), ("", "")],
+            [("", ""), ("", ""), ("r", "return"), ("q", "quit")],
+        ])
 
 
 def main(stdscr):

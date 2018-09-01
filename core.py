@@ -12,6 +12,7 @@ import re
 import sqlite3
 
 import matplotlib.pyplot as plt
+import pandas
 import rpg_mod
 
 
@@ -155,39 +156,52 @@ def add_note(db, cursor: sqlite3.Cursor, date: str, text: str):
     db.commit()
 
 
-def productivity_plot(cursor: sqlite3.Cursor):
-    cursor.execute('SELECT sum(weight),due_date FROM tasks WHERE status=0 AND due_date is not NULL GROUP BY due_date')
+def productivity_plot(cursor: sqlite3.Cursor, project_ids: list = None):
+    if not project_ids or project_ids == [None]:
+        cursor.execute('SELECT sum(tasks.weight),tasks.due_date, projects.name FROM tasks '
+                       'INNER JOIN projects ON tasks.project = projects.id '
+                       'WHERE status=0 AND due_date is not NULL GROUP BY due_date,project'
+                       )
+    else:
+        cursor.execute('SELECT sum(tasks.weight),tasks.due_date, projects.name FROM tasks '
+                       'INNER JOIN projects ON tasks.project = projects.id '
+                       'WHERE status=0 AND due_date is not NULL AND project IN ({})'
+                       'GROUP BY due_date,project'.format(','.join(['?'] * len(project_ids))),
+                       project_ids
+                       )
     data = cursor.fetchall()
 
     if len(data) <= 2:
-        logging.error("Not enough data to build a plot")
-        return
+        return False
 
-    date_start = datetime.datetime.strptime(data[0][1], "%Y-%m-%d")
-    date_end = datetime.datetime.strptime(data[-1][1], "%Y-%m-%d")
-    dates = [(date_start + datetime.timedelta(days=x)).strftime("%Y-%m-%d") for x in
-             range(0, (date_end - date_start).days + 1)]
+    # import into a DataFrame
+    labels = ["weight", "date", "project"]
+    df = pandas.DataFrame.from_records(data, columns=labels)
+    df = df.pivot(index="date", columns="project", values="weight")
 
-    weights = []
-    i = 0
-    for row in data:
-        while row[1] != dates[i]:
-            weights.append(0.0)
-            i += 1
+    # fill the missing dates
+    dates = pandas.date_range(data[0][1], data[-1][1])
+    df.index = pandas.DatetimeIndex(df.index)
+    df = df.reindex(dates, fill_value=0)
 
-        weights.append(row[0])
-        i += 1
-
-    fig = plt.figure(figsize=(10, 1))
+    # build the plot
+    fig = plt.figure(figsize=(12, 1))
     ax = fig.add_subplot(111)
-    ax.bar(dates, weights)
+    plot = df.plot(
+        ax=ax,
+        kind="bar",
+        stacked=True,
+
+    )
+    ax.legend(loc='upper left')
+
     ax.yaxis.grid(True, linestyle=':', which='major')
-    labels = ax.set_xticklabels(dates)
+    labels = ax.set_xticklabels([pandas_datetime.strftime("%Y-%m-%d") for pandas_datetime in df.index])
     plt.setp(labels, rotation=90)
-    ax.set_aspect(3.)
+    ax.set_aspect(5.)
     plt.show()
 
-    return
+    return True
 
 
 def get_total_weight(cursor: sqlite3.Cursor, closed=False):
