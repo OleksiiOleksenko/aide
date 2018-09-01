@@ -213,7 +213,7 @@ class Tab:
 
         if navigation.get(command, None):
             next_tab = navigation[command][0]
-            arguments = navigation[command][1]()
+            arguments = navigation[command][1]()  # pre-call and get arguments
             self.call_stack.push(next_tab, arguments)
             return True
 
@@ -255,7 +255,7 @@ class HomeTab(Tab):
 
     def open(self):
         navigation = {
-            "l": (TaskListTab, lambda: []),
+            "l": (TaskListTab, lambda: [0]),
             "u": (QuestsListTab, lambda: []),
             "w": (AwardsListTab, lambda: []),
             "p": (ProjectListTab, lambda: []),
@@ -357,10 +357,10 @@ class TaskListTab(ListTab):
     current = 0
 
     def open(self):
+        self.current = self.call_stack.top_arguments()[0]
+
         navigation = {
-            "m": (ModifyTab,
-                  lambda:
-                  [self.tasks[i] for i in self.selected_tasks] if self.selected_tasks else [self.tasks[self.current]])
+            "m": (ModifyTab, self.call_modify)
         }
         redraw = True
         include_overdue = True
@@ -377,11 +377,11 @@ class TaskListTab(ListTab):
                 if not self.tasks:
                     self.print_message("No open tasks!")
 
-                self.current = 0
+                # self.current = 0
                 self.selected_tasks.clear()
 
                 self.draw_all()
-                self.draw_cursor(0, 0)
+                self.draw_cursor(self.current, 0)
                 redraw = False
 
             # wait for commands
@@ -440,6 +440,15 @@ class TaskListTab(ListTab):
             [("a", "add task"), ("m", "modify selected"), ("h", "higher prio."), ("l", "lower prio.")],
             [("o", "exclude overdue"), ("c", "include closed"), ("r", "return"), ("q", "quit")],
         ])
+
+    def call_modify(self):
+        self.call_stack.top_arguments()[0] = self.current
+        if self.selected_tasks:
+            task_list = [self.tasks[i] for i in self.selected_tasks]
+        else:
+            task_list = [self.tasks[self.current]]
+        return task_list
+
 
 
 class QuestsListTab(ListTab):
@@ -626,7 +635,7 @@ class ProjectListTab(ListTab):
 
     def open(self):
         navigation = {
-            "l": (TaskListInProjectTab, lambda: [self.projects[self.current_project]["id"]]),
+            "l": (TaskListInProjectTab, lambda: [self.projects[self.current_project]["id"], 0]),
         }
         redraw = True
 
@@ -828,14 +837,13 @@ class ModifyTab(ListTab):
 
 class TaskListInProjectTab(TaskListTab):
     project_id = None
-    tasks = []
-    current = 0
 
     def open(self):
         self.project_id = self.call_stack.top_arguments()[0]
+        self.current = self.call_stack.top_arguments()[1]
 
         navigation = {
-            "m": (ModifyTab, lambda: [self.tasks[self.current]]),
+            "m": (ModifyTab, self.call_modify),
         }
         redraw = True
         include_overdue = True
@@ -849,10 +857,10 @@ class TaskListInProjectTab(TaskListTab):
                     self.tasks += core.list_tasks(self.cursor, project=self.project_id, list_overdue_tasks=True)
                 if include_no_date:
                     self.tasks += core.list_tasks(self.cursor, project=self.project_id, due_date="no")
-                self.current = 0
+                # self.current = 0
 
                 self.draw_all()
-                self.draw_cursor(0, 0)
+                self.draw_cursor(self.current, 0)
                 redraw = False
 
             c = self.stdscr.getkey()
@@ -898,6 +906,10 @@ class TaskListInProjectTab(TaskListTab):
             [("t", "set for today"), ("o", "remove due date "), ("a", "add task"), ("m", "modify task")],
             [("g", "project progress"), ("", ""), ("r", "return"), ("q", "quit")],
         ])
+
+    def call_modify(self):
+        self.call_stack.top_arguments()[1] = self.current
+        return [self.tasks[self.current]]
 
 
 def main(stdscr):
