@@ -23,6 +23,8 @@ class CallStack(list):
 
 
 class Tab:
+    redraw: bool = True
+
     def __init__(self, call_stack: CallStack, db: sqlite3.Connection, cursor: sqlite3.Cursor, stdscr,
                  main_window, message_window, commands_window, progress_window, character_window):
         self.call_stack = call_stack
@@ -97,6 +99,16 @@ class Tab:
             self.main_window.addstr(offset + position, 1, '*')
         self.stdscr.refresh()
         self.main_window.refresh()
+
+    def resize(self):
+        lines, cols = self.stdscr.getmaxyx()
+        self.stdscr.clear()
+        self.main_window = curses.newwin(30, cols - 1, 1, 0)
+        self.message_window = curses.newwin(3, cols - 1, lines - 9, 0)
+        self.commands_window = curses.newwin(5, cols - 1, lines - 6, 0)
+        self.progress_window = curses.newwin(3, 25, lines - 1, 0)
+        self.character_window = curses.newwin(3, 42, lines - 1, cols - 42)
+        self.stdscr.refresh()
 
     def print_message(self, text: str):
         self.message_window.addstr(0, 1, text)
@@ -203,10 +215,18 @@ class Tab:
         return
 
     def process_navigation_commands(self, command: str, navigation: dict, enable_return: bool = True):
+        # handle resizing
+        if command == "KEY_RESIZE":
+            self.resize()
+            self.redraw = True
+            return False
+
+        # quit
         if command == 'q':
             self.call_stack.clear()
             return True
 
+        # return to previous window
         if enable_return and command == 'r':
             self.call_stack.pop()
             return True
@@ -216,6 +236,8 @@ class Tab:
             arguments = navigation[command][1]()  # pre-call and get arguments
             self.call_stack.push(next_tab, arguments)
             return True
+
+        return False
 
 
 class ListTab(Tab):
@@ -265,14 +287,13 @@ class HomeTab(Tab):
             "s": (ReportTab, lambda: []),
         }
 
-        redraw = True
         while True:
-            if redraw:
+            if self.redraw:
                 # retrieve the current task and update windows
                 self.task = core.list_tasks(self.cursor, True)
                 self.task = self.task[0] if self.task else None
                 self.draw_all()
-                redraw = False
+                self.redraw = False
 
             # wait for commands
             c = self.stdscr.getkey()
@@ -281,7 +302,7 @@ class HomeTab(Tab):
             # process normal command
             if c == 'a':
                 self.add_task()
-                redraw = True
+                self.redraw = True
             elif c == 'c':
                 if not self.task:
                     self.print_message("No task to close")
@@ -289,7 +310,7 @@ class HomeTab(Tab):
 
                 if self.ask_confirmation("Do you want to close the current task?"):
                     core.close_task(self.db, self.cursor, self.task["id"])
-                redraw = True
+                    self.redraw = True
             elif c == 'd':
                 if not self.task:
                     self.print_message("No task to delete")
@@ -297,7 +318,7 @@ class HomeTab(Tab):
 
                 if self.ask_confirmation("Do you want to delete the current task?"):
                     core.delete_task(self.db, self.cursor, self.task["id"])
-                redraw = True
+                    self.redraw = True
             elif c == 'n':
                 self.add_note()
 
@@ -363,12 +384,11 @@ class TaskListTab(ListTab):
         navigation = {
             "m": (ModifyTab, self.call_modify)
         }
-        redraw = True
         include_overdue = True
         include_closed = False
 
         while True:
-            if redraw:
+            if self.redraw:
                 if include_closed:
                     self.tasks = core.list_tasks(self.cursor, False, exclude_closed_tasks=False)
                 else:
@@ -383,7 +403,7 @@ class TaskListTab(ListTab):
 
                 self.draw_all()
                 self.draw_cursor(self.current, 0)
-                redraw = False
+                self.redraw = False
 
             # wait for commands
             c = self.stdscr.getkey()
@@ -457,17 +477,17 @@ class QuestsListTab(ListTab):
     def open(self):
         navigation = {}
         current = 0
-        redraw = True
+        self.redraw = True
 
         while True:
-            if redraw:
+            if self.redraw:
                 # retrieve the quests
                 self.quests = rpg_mod.get_quests(self.cursor)
 
                 current = 0
                 self.draw_all()
                 self.draw_cursor(0, 0)
-                redraw = False
+                self.redraw = False
 
             # wait for commands
             c = self.stdscr.getkey()
@@ -490,10 +510,10 @@ class QuestsListTab(ListTab):
                 if result[1]:
                     message = "Hey! You leveled up!!!"
                 self.print_message(message)
-                redraw = True
+                self.redraw = True
             elif c == 'a':
                 self.add_quest()
-                redraw = True
+                self.redraw = True
 
             if self.process_navigation_commands(c, navigation):
                 return self.call_stack
@@ -556,17 +576,17 @@ class AwardsListTab(ListTab):
     def open(self):
         navigation = {}
         current = 0
-        redraw = True
+        self.redraw = True
 
         while True:
-            if redraw:
+            if self.redraw:
                 # retrieve the awards
                 self.awards = rpg_mod.get_awards(self.cursor)
 
                 current = 0
                 self.draw_all()
                 self.draw_cursor(0, 0)
-                redraw = False
+                self.redraw = False
 
             # wait for commands
             c = self.stdscr.getkey()
@@ -584,10 +604,10 @@ class AwardsListTab(ListTab):
             elif c == 'c':
                 result = rpg_mod.claim_award(self.db, self.cursor, self.awards[current]["id"])
                 self.print_message("{} costed you {} gold".format(result[0], result[1]))
-                redraw = True
+                self.redraw = True
             elif c == 'a':
                 self.add_award()
-                redraw = True
+                self.redraw = True
 
             if self.process_navigation_commands(c, navigation):
                 return self.call_stack
@@ -637,15 +657,15 @@ class ProjectListTab(ListTab):
         navigation = {
             "l": (TaskListInProjectTab, lambda: [self.projects[self.current_project]["id"], 0]),
         }
-        redraw = True
+        self.redraw = True
 
         while True:
-            if redraw:
+            if self.redraw:
                 self.projects = project_mod.list_projects(self.cursor)
 
                 self.draw_all()
                 self.draw_cursor(0, 0)
-                redraw = False
+                self.redraw = False
 
             # wait for commands
             c = self.stdscr.getkey()
@@ -669,10 +689,10 @@ class ProjectListTab(ListTab):
                 priority = int(priority)
                 project_mod.modify_project(self.db, self.cursor, self.projects[self.current_project]["id"],
                                            priority=priority)
-                redraw = True
+                self.redraw = True
             elif c == 'a':
                 self.add_project()
-                redraw = True
+                self.redraw = True
 
             if self.process_navigation_commands(c, navigation):
                 return self.call_stack
@@ -715,13 +735,13 @@ class ModifyTab(ListTab):
     def open(self):
         self.tasks = self.call_stack.top_arguments()
         ids = [t["id"] for t in self.tasks]
-        redraw = True
+        self.redraw = True
 
         while True:
             navigation = {}
-            if redraw:
+            if self.redraw:
                 self.draw_all()
-                redraw = False
+                self.redraw = False
 
             # wait for commands
             c = self.stdscr.getkey()
@@ -736,7 +756,7 @@ class ModifyTab(ListTab):
                 for i, id_ in enumerate(ids):
                     core.modify_task(self.db, self.cursor, id_=id_, name=name)
                     self.tasks[i]["name"] = name
-                redraw = True
+                self.redraw = True
             elif c == 's':
                 self.print_message("Enter new status, 0 - closed, 1 - open:")
                 st, status = self.get_input()
@@ -746,7 +766,7 @@ class ModifyTab(ListTab):
                 for i, id_ in enumerate(ids):
                     core.modify_task(self.db, self.cursor, id_=id_, status=st)
                     self.tasks[i]["status"] = status
-                redraw = True
+                self.redraw = True
             elif c == 'p':
                 self.print_message("Enter new priority:")
                 priority, status = self.get_input()
@@ -756,7 +776,7 @@ class ModifyTab(ListTab):
                 for i, id_ in enumerate(ids):
                     core.modify_task(self.db, self.cursor, id_=id_, priority=priority)
                     self.tasks[i]["priority"] = priority
-                redraw = True
+                self.redraw = True
             elif c == 'w':
                 self.print_message("Enter new weight:")
                 weight, status = self.get_input()
@@ -766,7 +786,7 @@ class ModifyTab(ListTab):
                 for i, id_ in enumerate(ids):
                     core.modify_task(self.db, self.cursor, id_=id_, weight=weight)
                     self.tasks[i]["weight"] = weight
-                redraw = True
+                self.redraw = True
             elif c == 't':
                 self.print_message("Enter new time (HH:MM):")
                 time, status = self.get_input()
@@ -779,7 +799,7 @@ class ModifyTab(ListTab):
                 for i, id_ in enumerate(ids):
                     core.modify_task(self.db, self.cursor, id_=id_, time=time)
                     self.tasks[i]["time"] = time
-                redraw = True
+                self.redraw = True
             elif c == 'a':
                 self.print_message("Enter new due date (YYYY-MM-DD):")
                 date, status = self.get_input()
@@ -792,7 +812,7 @@ class ModifyTab(ListTab):
                 for i, id_ in enumerate(ids):
                     core.modify_task(self.db, self.cursor, id_=id_, due_date=date)
                     self.tasks[i]["due_date"] = date
-                redraw = True
+                self.redraw = True
             elif c == 'e':
                 self.print_message("Enter repetition period (no repetition if left blank):")
                 repeat, status = self.get_input()
@@ -805,7 +825,7 @@ class ModifyTab(ListTab):
                 for i, id_ in enumerate(ids):
                     core.modify_task(self.db, self.cursor, id_=id_, repeat=repeat)
                     self.tasks[i]["repeat"] = repeat
-                redraw = True
+                self.redraw = True
             elif c == 'd':
                 if self.ask_confirmation("Do you want to delete the tasks?"):
                     for i in ids:
@@ -842,13 +862,13 @@ class TaskListInProjectTab(TaskListTab):
         navigation = {
             "m": (ModifyTab, self.call_modify),
         }
-        redraw = True
+        self.redraw = True
         include_overdue = True
         include_no_date = True
 
         # wait for commands
         while True:
-            if redraw:
+            if self.redraw:
                 self.tasks = core.list_tasks(self.cursor, project=self.project_id)
                 if include_overdue:
                     self.tasks += core.list_tasks(self.cursor, project=self.project_id, list_overdue_tasks=True)
@@ -858,7 +878,7 @@ class TaskListInProjectTab(TaskListTab):
 
                 self.draw_all()
                 self.draw_cursor(self.current, 0)
-                redraw = False
+                self.redraw = False
 
             c = self.stdscr.getkey()
             self.message_window.clear()
@@ -874,22 +894,22 @@ class TaskListInProjectTab(TaskListTab):
                 self.draw_cursor(self.current, previous)
             elif c == 't':
                 core.modify_task(self.db, self.cursor, self.tasks[self.current]["id"], due_date="today")
-                redraw = True
+                self.redraw = True
             elif c == 'o':
                 core.modify_task(self.db, self.cursor, self.tasks[self.current]["id"], due_date="no")
-                redraw = True
+                self.redraw = True
             elif c == 'a':
                 self.add_task(project=self.project_id)
-                redraw = True
+                self.redraw = True
             elif c == 'h':
                 task = self.tasks[self.current]
                 core.modify_task(self.db, self.cursor, task["id"], priority=task["priority"] + self.priority_step)
-                redraw = True
+                self.redraw = True
             elif c == 'l':
                 task = self.tasks[self.current]
                 new_priority = task["priority"] - self.priority_step if task["priority"] >= self.priority_step else 0
                 core.modify_task(self.db, self.cursor, task["id"], priority=new_priority)
-                redraw = True
+                self.redraw = True
             elif c == 'g':
                 total, closed = project_mod.get_project_progress(self.cursor, self.project_id)
                 self.print_message("Project progress: {} / {}".format(closed, total))
@@ -917,13 +937,13 @@ class ReportTab(ListTab):
         navigation = {}
         self.projects = project_mod.list_projects(self.cursor)
         self.projects.append({"name": "All", "id": None})
-        redraw = True
+        self.redraw = True
 
         while True:
-            if redraw:
+            if self.redraw:
                 self.draw_all()
                 self.draw_cursor(self.current, 0)
-                redraw = False
+                self.redraw = False
 
             # wait for commands
             c = self.stdscr.getkey()
