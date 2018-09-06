@@ -426,23 +426,23 @@ class TaskListTab(ListTab):
                 self.draw_selection(self.current, True)
             elif c == 'o':
                 include_overdue = False
-                redraw = True
+                self.redraw = True
             elif c == 'c':
                 include_closed = True
-                redraw = True
+                self.redraw = True
             elif c == 'a':
                 self.add_task()
-                redraw = True
+                self.redraw = True
             elif c == 'h':
                 task = self.tasks[self.current]
                 new_priority = task["priority"] + self.priority_step
                 core.modify_task(self.db, self.cursor, task["id"], priority=new_priority)
-                redraw = True
+                self.redraw = True
             elif c == 'l':
                 task = self.tasks[self.current]
                 new_priority = task["priority"] - self.priority_step if task["priority"] >= self.priority_step else 0
                 core.modify_task(self.db, self.cursor, task["id"], priority=new_priority)
-                redraw = True
+                self.redraw = True
 
             if self.process_navigation_commands(c, navigation):
                 return self.call_stack
