@@ -311,7 +311,7 @@ class HomeTab(Tab):
                 if self.ask_confirmation("Do you want to close the current task?"):
                     core.close_task(self.db, self.cursor, self.task["id"])
                     self.redraw = True
-            elif c == 'd':
+            elif c == "KEY_DC":
                 if not self.task:
                     self.print_message("No task to delete")
                     continue
@@ -367,7 +367,7 @@ class HomeTab(Tab):
 
     def draw_commands(self):
         self.draw_generic_commands([
-            [("a", "add task"), ("m", "modify current"), ("c", "close current"), ("d", "delete current")],
+            [("a", "add task"), ("m", "modify current"), ("c", "close current"), ("", "DEL: delete current")],
             [("l", "list tasks"), ("n", "add note"), ("s", "show reports"), ("p", "projects")],
             [("u", "quests"), ("w", "awards"), ("", ""), ("q", "quit")],
         ])
@@ -410,11 +410,11 @@ class TaskListTab(ListTab):
             self.message_window.clear()
 
             # process the command
-            if c == 'n':
+            if c == "j":
                 previous = self.current
                 self.current = (self.current + 1) % len(self.tasks)
                 self.draw_cursor(self.current, previous)
-            elif c == 'p':
+            elif c == "k":
                 previous = self.current
                 self.current = (self.current - 1) % len(self.tasks)
                 self.draw_cursor(self.current, previous)
@@ -433,12 +433,12 @@ class TaskListTab(ListTab):
             elif c == 'a':
                 self.add_task()
                 self.redraw = True
-            elif c == 'h':
+            elif c == 'p':
                 task = self.tasks[self.current]
                 new_priority = task["priority"] + self.priority_step
                 core.modify_task(self.db, self.cursor, task["id"], priority=new_priority)
                 self.redraw = True
-            elif c == 'l':
+            elif c == 'P':
                 task = self.tasks[self.current]
                 new_priority = task["priority"] - self.priority_step if task["priority"] >= self.priority_step else 0
                 core.modify_task(self.db, self.cursor, task["id"], priority=new_priority)
@@ -457,8 +457,8 @@ class TaskListTab(ListTab):
 
     def draw_commands(self):
         self.draw_generic_commands([
-            [("n", "next task"), ("p", "previous task"), ("s", "select "), ("u", "undo selection")],
-            [("a", "add task"), ("m", "modify selected"), ("h", "higher prio."), ("l", "lower prio.")],
+            [("j", "next task"), ("k", "previous task"), ("s", "select "), ("u", "undo selection")],
+            [("a", "add task"), ("m", "modify selected"), ("p", "increase prio."), ("P", "decrease prio.")],
             [("o", "exclude overdue"), ("c", "include closed"), ("r", "return"), ("q", "quit")],
         ])
 
@@ -494,11 +494,11 @@ class QuestsListTab(ListTab):
             self.message_window.clear()
 
             # process the command
-            if c == 'n':
+            if c == "j":
                 previous = current
                 current = (current + 1) % len(self.quests)
                 self.draw_cursor(current, previous)
-            elif c == 'p':
+            elif c == "k":
                 previous = current
                 current = (current - 1) % len(self.quests)
                 self.draw_cursor(current, previous)
@@ -528,7 +528,7 @@ class QuestsListTab(ListTab):
 
     def draw_commands(self):
         self.draw_generic_commands([
-            [("n", "next quest"), ("p", "previous quest"), ("", ""), ("", "")],
+            [("j", "next quest"), ("k", "previous quest"), ("", ""), ("", "")],
             [("c", "complete quest"), ("a", "new quest"), ("", ""), ("", "")],
             [("", ""), ("", ""), ("r", "return"), ("q", "quit")],
         ])
@@ -593,11 +593,11 @@ class AwardsListTab(ListTab):
             self.clear_messages()
 
             # process the command
-            if c == 'n':
+            if c == "j":
                 previous = current
                 current = (current + 1) % len(self.awards)
                 self.draw_cursor(current, previous)
-            elif c == 'p':
+            elif c == "k":
                 previous = current
                 current = (current - 1) % len(self.awards)
                 self.draw_cursor(current, previous)
@@ -643,7 +643,7 @@ class AwardsListTab(ListTab):
 
     def draw_commands(self):
         self.draw_generic_commands([
-            [("n", "next award"), ("p", "previous award"), ("", ""), ("", "")],
+            [("j", "next award"), ("k", "previous award"), ("", ""), ("", "")],
             [("c", "claim award"), ("a", "new award"), ("", ""), ("", "")],
             [("", ""), ("", ""), ("r", "return"), ("q", "quit")],
         ])
@@ -672,11 +672,11 @@ class ProjectListTab(ListTab):
             self.message_window.clear()
 
             # process the command
-            if c == 'n':
+            if c == "j":
                 previous = self.current_project
                 self.current_project = (self.current_project + 1) % len(self.projects)
                 self.draw_cursor(self.current_project, previous)
-            elif c == 'p':
+            elif c == "k":
                 previous = self.current_project
                 self.current_project = (self.current_project - 1) % len(self.projects)
                 self.draw_cursor(self.current_project, previous)
@@ -723,7 +723,7 @@ class ProjectListTab(ListTab):
 
     def draw_commands(self):
         self.draw_generic_commands([
-            [("n", "next project"), ("p", "previous project"), ("", ""), ("", "")],
+            [("j", "next project"), ("k", "previous project"), ("", ""), ("", "")],
             [("l", "list tasks"), ("e", "set priority"), ("a", "add project"), ("", "")],
             [("", ""), ("", ""), ("r", "return"), ("q", "quit")],
         ])
@@ -826,7 +826,7 @@ class ModifyTab(ListTab):
                     core.modify_task(self.db, self.cursor, id_=id_, repeat=repeat)
                     self.tasks[i]["repeat"] = repeat
                 self.redraw = True
-            elif c == 'd':
+            elif c == "KEY_DC":
                 if self.ask_confirmation("Do you want to delete the tasks?"):
                     for i in ids:
                         core.delete_task(self.db, self.cursor, i)
@@ -847,7 +847,7 @@ class ModifyTab(ListTab):
     def draw_commands(self):
         self.draw_generic_commands([
             [("n", "set name "), ("s", "set status"), ("p", "set priority"), ("w", "set weight")],
-            [("t", "set due time"), ("a", "set due date"), ("e", "set repeat"), ("d", "delete tasks")],
+            [("t", "set due time"), ("d", "set due date"), ("e", "set repeat"), ("", "DEL: delete tasks")],
             [("", ""), ("", ""), ("r", "return"), ("q", "quit")],
         ])
 
@@ -884,28 +884,28 @@ class TaskListInProjectTab(TaskListTab):
             self.message_window.clear()
 
             # process the command
-            if c == 'n':
+            if c == "j":
                 previous = self.current
                 self.current = (self.current + 1) % len(self.tasks)
                 self.draw_cursor(self.current, previous)
-            elif c == 'p':
+            elif c == "k":
                 previous = self.current
                 self.current = (self.current - 1) % len(self.tasks)
                 self.draw_cursor(self.current, previous)
             elif c == 't':
                 core.modify_task(self.db, self.cursor, self.tasks[self.current]["id"], due_date="today")
                 self.redraw = True
-            elif c == 'o':
+            elif c == 'n':
                 core.modify_task(self.db, self.cursor, self.tasks[self.current]["id"], due_date="no")
                 self.redraw = True
             elif c == 'a':
                 self.add_task(project=self.project_id)
                 self.redraw = True
-            elif c == 'h':
+            elif c == 'p':
                 task = self.tasks[self.current]
                 core.modify_task(self.db, self.cursor, task["id"], priority=task["priority"] + self.priority_step)
                 self.redraw = True
-            elif c == 'l':
+            elif c == 'P':
                 task = self.tasks[self.current]
                 new_priority = task["priority"] - self.priority_step if task["priority"] >= self.priority_step else 0
                 core.modify_task(self.db, self.cursor, task["id"], priority=new_priority)
@@ -919,8 +919,8 @@ class TaskListInProjectTab(TaskListTab):
 
     def draw_commands(self):
         self.draw_generic_commands([
-            [("n", "next"), ("p", "previous"), ("h", "higer prio."), ("l", "lower prio.")],
-            [("t", "set for today"), ("o", "remove due date "), ("a", "add task"), ("m", "modify task")],
+            [("j", "next"), ("k", "previous"), ("p", "higer prio."), ("P", "lower prio.")],
+            [("t", "set for today"), ("n", "remove due date "), ("a", "add task"), ("m", "modify task")],
             [("g", "project progress"), ("", ""), ("r", "return"), ("q", "quit")],
         ])
 
@@ -949,11 +949,11 @@ class ReportTab(ListTab):
             c = self.stdscr.getkey()
             self.message_window.clear()
 
-            if c == 'n':
+            if c == "j":
                 previous = self.current
                 self.current = (self.current + 1) % len(self.projects)
                 self.draw_cursor(self.current, previous)
-            elif c == 'p':
+            elif c == "k":
                 previous = self.current
                 self.current = (self.current - 1) % len(self.projects)
                 self.draw_cursor(self.current, previous)
@@ -970,7 +970,7 @@ class ReportTab(ListTab):
 
     def draw_commands(self):
         self.draw_generic_commands([
-            [("n", "next project"), ("p", "previous project"), ("", ""), ("", "")],
+            [("j", "next project"), ("k", "previous project"), ("", ""), ("", "")],
             [("d", "draw plot"), ("", ""), ("", ""), ("", "")],
             [("", ""), ("", ""), ("r", "return"), ("q", "quit")],
         ])
