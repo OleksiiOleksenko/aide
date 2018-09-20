@@ -274,6 +274,10 @@ class ListTab(Tab):
         self.main_window.refresh()
 
 
+class DialogTab(Tab):
+    pass
+
+
 class HomeTab(Tab):
     task = None
 
@@ -285,6 +289,7 @@ class HomeTab(Tab):
             "p": (ProjectListTab, lambda: []),
             "m": (ModifyTab, lambda: [self.task] if self.task else []),
             "s": (ReportTab, lambda: []),
+            "n": (AddNoteTab, lambda: []),
         }
 
         while True:
@@ -319,34 +324,9 @@ class HomeTab(Tab):
                 if self.ask_confirmation("Do you want to delete the current task?"):
                     core.delete_task(self.db, self.cursor, self.task["id"])
                     self.redraw = True
-            elif c == 'n':
-                self.add_note()
 
             if self.process_navigation_commands(c, navigation, enable_return=False):
                 return self.call_stack
-
-    def add_note(self):
-        self.print_message("Enter the note:")
-        text, status = self.get_input()
-        if status == "cancel":
-            self.clear_messages()
-            return
-
-        self.clear_messages()
-        self.print_message("Enter the date (YYYY-MM-DD) (default=today):")
-        date, status = self.get_input()
-        if status == "cancel":
-            self.clear_messages()
-            return
-        if not core.validate_relative_date(date):
-            self.print_message("Wrong date format. Aborted.")
-            return
-        if not date:
-            date = "today"
-
-        core.add_note(self.db, self.cursor, date, text)
-        self.clear_messages()
-        self.print_message("Note added")
 
     def draw_main(self):
         self.main_window.erase()
@@ -975,6 +955,46 @@ class ReportTab(ListTab):
             [("j", "next project"), ("k", "previous project"), ("", ""), ("", "")],
             [("d", "draw plot"), ("", ""), ("", ""), ("", "")],
             [("", ""), ("", ""), ("r", "return"), ("q", "quit")],
+        ])
+
+
+class AddNoteTab(DialogTab):
+    def open(self):
+        self.draw_all()
+
+        params = [
+            ["", "Enter the note", lambda x: True, str],
+            ["today", "Enter the date (YYYY-MM-DD) (today if left blank)", core.validate_relative_date, str],
+        ]
+
+        for i, p in enumerate(params):
+            self.print_message(p[1] + ":")
+            text, status = self.get_input(p[0])
+            if status == "cancel":
+                return
+            if status == "finish":
+                break
+            if not p[2](text):
+                self.print_message("Wrong format. Aborted.")
+                return
+            params[i][0] = p[3](text) if text else p[0]
+            self.message_window.clear()
+
+        core.add_note(self.db, self.cursor, params[1][0], params[0][0])
+
+        self.call_stack.pop()
+        return self.call_stack
+
+    def draw_main(self):
+        self.main_window.erase()
+        self.main_window.refresh()
+        self.stdscr.refresh()
+
+    def draw_commands(self):
+        self.draw_generic_commands([
+            [("j", "next selection"), ("k", "prev. selection (selections may not be available)"), ("", ""), ("", "")],
+            [("", ""), ("", ""), ("", ""), ("", "")],
+            [("", "^F: leave the rest of the fields on defaults"), ("", ""), ("", ""), ("", "ESC: cancel")],
         ])
 
 
