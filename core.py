@@ -149,8 +149,10 @@ def delete_task(db, cursor: sqlite3.Cursor, id_: str):
 
 
 def add_note(db, cursor: sqlite3.Cursor, date: str, text: str):
+    date = relative_date_to_sql_query(date)
+
     if date:
-        cursor.execute("INSERT INTO notes(date, text) VALUES (?, ?)", (date, text))
+        cursor.execute("INSERT INTO notes(date, text) VALUES (" + date + ",?)", (text, ))
     else:
         cursor.execute("INSERT INTO notes(date, text) VALUES (date('now'), ?)", (text,))
     db.commit()

@@ -333,14 +333,16 @@ class HomeTab(Tab):
             return
 
         self.clear_messages()
-        self.print_message("Enter the date (YYYY-MM-DD):")
+        self.print_message("Enter the date (YYYY-MM-DD) (default=today):")
         date, status = self.get_input()
         if status == "cancel":
             self.clear_messages()
             return
-        if not core.validate_date(date):
+        if not core.validate_relative_date(date):
             self.print_message("Wrong date format. Aborted.")
             return
+        if not date:
+            date = "today"
 
         core.add_note(self.db, self.cursor, date, text)
         self.clear_messages()
@@ -800,7 +802,7 @@ class ModifyTab(ListTab):
                     core.modify_task(self.db, self.cursor, id_=id_, time=time)
                     self.tasks[i]["time"] = time
                 self.redraw = True
-            elif c == 'a':
+            elif c == 'd':
                 self.print_message("Enter new due date (YYYY-MM-DD):")
                 date, status = self.get_input()
                 if status == "cancel":
