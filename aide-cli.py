@@ -386,15 +386,14 @@ def main():
 
     # list tasks
     elif args.subparser_name == 'list':
-        # by default, list overdue tasks too
-        if not args.date and not args.top:
-            print("  Overdue tasks:")
-            tasks = core.list_tasks(cursor, args.top, args.open, args.date, list_overdue_tasks=True)
+        print("  Today tasks:")
+        if not args.date:
+            # by default, list overdue tasks too
+            tasks = core.list_tasks(cursor, args.top, args.open, due_date=args.date)
             print_tasks(tasks, args.verbose)
-            print("  Today tasks:")
-
-        tasks = core.list_tasks(cursor, args.top, args.open, args.date, list_overdue_tasks=False)
-        print_tasks(tasks, args.verbose)
+        else:
+            tasks = core.list_tasks(cursor, args.top, args.open, exclude_overdue_tasks=True, due_date=args.date)
+            print_tasks(tasks, args.verbose)
 
     # modify a task
     elif args.subparser_name == 'mod':

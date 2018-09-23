@@ -35,7 +35,7 @@ def add_task(db, cursor: sqlite3.Cursor, name, priority, time, date, weight, rep
 
 
 def list_tasks(cursor: sqlite3.Cursor, only_top_result: bool = False, exclude_closed_tasks: bool = True,
-               due_date: str = None, project: int = None, list_overdue_tasks: bool = False):
+               exclude_overdue_tasks: bool = False, due_date: str = None, project: int = None):
     query = "SELECT id, name, priority, " + utc_to_local("due_time") + ", status, weight, due_date, project " \
                                                                        "FROM tasks WHERE "
     where_clauses = []
@@ -44,7 +44,7 @@ def list_tasks(cursor: sqlite3.Cursor, only_top_result: bool = False, exclude_cl
     # parametrize the query
     if only_top_result:
         query += "status=1 AND" \
-                 " (due_time < current_time OR due_time IS NULL) AND due_date = current_date " \
+                 " (due_time < current_time OR due_time IS NULL) AND due_date <= current_date " \
                  " ORDER BY priority DESC " \
                  " LIMIT 1"
     else:
@@ -58,15 +58,15 @@ def list_tasks(cursor: sqlite3.Cursor, only_top_result: bool = False, exclude_cl
             due_date = relative_date_to_sql_query(due_date)
             if due_date == "null":
                 where_clauses.append("due_date is null")
-            elif list_overdue_tasks:
-                where_clauses.append("due_date<" + due_date)
-            else:
+            elif exclude_overdue_tasks:
                 where_clauses.append("due_date=" + due_date)
-        else:
-            if list_overdue_tasks:
-                where_clauses.append("due_date < current_date")
             else:
+                where_clauses.append("due_date<=" + due_date)
+        else:
+            if exclude_overdue_tasks:
                 where_clauses.append("due_date = current_date")
+            else:
+                where_clauses.append("due_date <= current_date")
 
         query += " AND ".join(where_clauses)
         query += " ORDER BY priority DESC"

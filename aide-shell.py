@@ -366,17 +366,13 @@ class TaskListTab(ListTab):
         navigation = {
             "m": (ModifyTab, self.call_modify)
         }
-        include_overdue = True
-        include_closed = False
+        exclude_overdue = False
+        exclude_closed = True
 
         while True:
             if self.redraw:
-                if include_closed:
-                    self.tasks = core.list_tasks(self.cursor, False, exclude_closed_tasks=False)
-                else:
-                    self.tasks = core.list_tasks(self.cursor, False, exclude_closed_tasks=True)
-                if include_overdue:
-                    self.tasks += core.list_tasks(self.cursor, False, list_overdue_tasks=True)
+                self.tasks = core.list_tasks(self.cursor, False, exclude_closed_tasks=exclude_closed,
+                                             exclude_overdue_tasks=exclude_overdue)
                 if not self.tasks:
                     self.print_message("No open tasks!")
 
@@ -407,10 +403,10 @@ class TaskListTab(ListTab):
                 self.selected_tasks.discard(self.current)
                 self.draw_selection(self.current, True)
             elif c == 'o':
-                include_overdue = False
+                exclude_overdue = True
                 self.redraw = True
             elif c == 'c':
-                include_closed = True
+                exclude_closed = False
                 self.redraw = True
             elif c == 'a':
                 self.add_task()
@@ -845,18 +841,11 @@ class TaskListInProjectTab(TaskListTab):
             "m": (ModifyTab, self.call_modify),
         }
         self.redraw = True
-        include_overdue = True
-        include_no_date = True
 
         # wait for commands
         while True:
             if self.redraw:
                 self.tasks = core.list_tasks(self.cursor, project=self.project_id)
-                if include_overdue:
-                    self.tasks += core.list_tasks(self.cursor, project=self.project_id, list_overdue_tasks=True)
-                if include_no_date:
-                    self.tasks += core.list_tasks(self.cursor, project=self.project_id, due_date="no")
-                # self.current = 0
 
                 self.draw_all()
                 self.draw_cursor(self.current, 0)
