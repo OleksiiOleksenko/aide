@@ -449,16 +449,17 @@ class TaskListTab(ListTab):
                 self.current = (self.current - 1) % len(self.tasks)
                 self.draw_cursor(self.current, previous)
             elif c == 's':
-                self.selected_tasks.add(self.current)
-                self.draw_selection(self.current)
-            elif c == 'u':
-                self.selected_tasks.discard(self.current)
-                self.draw_selection(self.current, True)
+                if self.current not in self.selected_tasks:
+                    self.selected_tasks.add(self.current)
+                    self.draw_selection(self.current)
+                else:
+                    self.selected_tasks.discard(self.current)
+                    self.draw_selection(self.current, True)
             elif c == 'o':
                 exclude_overdue = True
                 self.current = 0
                 self.redraw = True
-            elif c == 'c':
+            elif c == 'f':
                 exclude_closed = False
                 self.current = 0
                 self.redraw = True
@@ -475,6 +476,12 @@ class TaskListTab(ListTab):
                 new_priority = task["priority"] - self.priority_step if task["priority"] >= self.priority_step else 0
                 core.modify_task(self.db, self.cursor, task["id"], priority=new_priority)
                 self.redraw = True
+            elif c == 'c':
+                if self.tasks[self.current]["status"]:
+                    core.modify_task(self.db, self.cursor, self.tasks[self.current]["id"], status=0)
+                else:
+                    core.modify_task(self.db, self.cursor, self.tasks[self.current]["id"], status=1)
+                self.redraw = True
 
             if self.process_navigation_commands(c, navigation):
                 return self.call_stack
@@ -489,9 +496,9 @@ class TaskListTab(ListTab):
 
     def draw_commands(self):
         self.draw_generic_commands([
-            [("j", "next task"), ("k", "previous task"), ("s", "select "), ("u", "undo selection")],
+            [("j", "next task"), ("k", "previous task"), ("s", "toggle selection"), ("c", "toggle status")],
             [("a", "add task"), ("m", "modify selected"), ("p", "increase prio."), ("P", "decrease prio.")],
-            [("o", "exclude overdue"), ("c", "include closed"), ("r", "return"), ("q", "quit")],
+            [("o", "exclude overdue"), ("f", "include finished"), ("r", "return"), ("q", "quit")],
         ])
 
     def call_modify(self):
@@ -917,11 +924,11 @@ class TaskListInProjectTab(TaskListTab):
                 previous = self.current
                 self.current = (self.current - 1) % len(self.tasks)
                 self.draw_cursor(self.current, previous)
-            elif c == 't':
-                core.modify_task(self.db, self.cursor, self.tasks[self.current]["id"], due_date="today")
-                self.redraw = True
-            elif c == 'n':
-                core.modify_task(self.db, self.cursor, self.tasks[self.current]["id"], due_date="no")
+            elif c == 'd':
+                if self.tasks[self.current]["due_date"]:
+                    core.modify_task(self.db, self.cursor, self.tasks[self.current]["id"], due_date="no")
+                else:
+                    core.modify_task(self.db, self.cursor, self.tasks[self.current]["id"], due_date="today")
                 self.redraw = True
             elif c == 'a':
                 self.add_task(project=self.project_id)
@@ -938,6 +945,12 @@ class TaskListInProjectTab(TaskListTab):
             elif c == 'g':
                 total, closed = project_mod.get_project_progress(self.cursor, self.project_id)
                 self.print_message("Project progress: {} / {}".format(closed, total))
+            elif c == 'c':
+                if self.tasks[self.current]["status"]:
+                    core.modify_task(self.db, self.cursor, self.tasks[self.current]["id"], status=0)
+                else:
+                    core.modify_task(self.db, self.cursor, self.tasks[self.current]["id"], status=1)
+                self.redraw = True
 
             if self.process_navigation_commands(c, navigation):
                 return self.call_stack
@@ -945,7 +958,7 @@ class TaskListInProjectTab(TaskListTab):
     def draw_commands(self):
         self.draw_generic_commands([
             [("j", "next"), ("k", "previous"), ("p", "higer prio."), ("P", "lower prio.")],
-            [("t", "set for today"), ("n", "remove due date "), ("a", "add task"), ("m", "modify task")],
+            [("d", "today/no date"), ("c", "toggle status"), ("a", "add task"), ("m", "modify task")],
             [("g", "project progress"), ("", ""), ("r", "return"), ("q", "quit")],
         ])
 
