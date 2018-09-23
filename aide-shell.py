@@ -290,8 +290,11 @@ class DialogTab(Tab):
 
     def select_from_options(self, options: list, default: int) -> tuple:
         cursor = 0
+        for i, o in enumerate(options):
+            if o['id'] == default:
+                cursor = i
+                break
         status = "ok"
-        selection = default
 
         # draw the options
         self.main_window.erase()
@@ -323,14 +326,13 @@ class DialogTab(Tab):
             if c == curses.ascii.ACK:  # ^f
                 status = "finish"
                 break
-            elif c == ord("l"):
-                selection = options[cursor]["id"]
+            if c == curses.KEY_ENTER or c == 10 or c == 13:  # Enter
                 break
 
         self.main_window.erase()
         self.stdscr.refresh()
         self.main_window.refresh()
-        return selection, status
+        return options[cursor]["id"], status
 
 
 class HomeTab(Tab):
@@ -345,7 +347,7 @@ class HomeTab(Tab):
             "m": (ModifyTab, lambda: [self.task] if self.task else []),
             "s": (ReportTab, lambda: []),
             "n": (AddNoteTab, lambda: []),
-            "a": (AddTaskTab, lambda: [None]),
+            "a": (AddTaskTab, lambda: ["today", 1, ]),
         }
 
         while True:
@@ -900,6 +902,7 @@ class TaskListInProjectTab(TaskListTab):
 
         navigation = {
             "m": (ModifyTab, self.call_modify),
+            "a": (AddTaskTab, lambda: ["no", self.project_id]),
         }
         self.redraw = True
 
@@ -929,9 +932,6 @@ class TaskListInProjectTab(TaskListTab):
                     core.modify_task(self.db, self.db_cursor, self.tasks[self.current]["id"], due_date="no")
                 else:
                     core.modify_task(self.db, self.db_cursor, self.tasks[self.current]["id"], due_date="today")
-                self.redraw = True
-            elif c == 'a':
-                self.add_task(project=self.project_id)
                 self.redraw = True
             elif c == 'p':
                 task = self.tasks[self.current]
@@ -1046,13 +1046,14 @@ class AddTaskTab(DialogTab):
     def open(self):
         self.draw_all()
 
-        project = self.call_stack.top_arguments()[0]
+        date = self.call_stack.top_arguments()[0]
+        project = self.call_stack.top_arguments()[1]
         params = [
             ["Enter the task", self.get_input, "", lambda x: True, str],
             ["Enter task weight (0.0 if left blank)", self.get_input, 0.0, lambda x: True, float],
             ["Enter project", self.select_project, project, lambda x: True, int],
             ["Enter task priority (0 if left blank)", self.get_input, 0, lambda x: True, int],
-            ["Enter due date (YYYY-MM-DD) (today if left blank)", self.get_input, "", core.validate_relative_date, str],
+            ["Enter due date (YYYY-MM-DD) (today if left blank)", self.get_input, date, core.validate_relative_date, str],
             ["Enter due time (HH:MM) (00:00 if left blank)", self.get_input, "", core.validate_time, str],
             ["Enter repetition period (no repetition if left blank)", self.get_input, "", core.validate_time_period,
              str],
@@ -1062,7 +1063,6 @@ class AddTaskTab(DialogTab):
         for i, p in enumerate(params):
             self.print_message(p[0] + ":")
             text, status = p[1](p[2])
-            print(text)
             if status == "cancel":
                 self.call_stack.pop()
                 return self.call_stack
@@ -1075,16 +1075,15 @@ class AddTaskTab(DialogTab):
             params[i][2] = p[4](text)
             self.message_window.clear()
 
-        core.add_task(self.db, self.db_cursor, params[0][2], params[2][2], params[4][2], params[3][2], params[1][2],
-                      params[5][2], params[6][2], params[7][2])
+        core.add_task(self.db, self.db_cursor, params[0][2], params[3][2], params[5][2], params[4][2], params[1][2],
+                      params[6][2], params[2][2], params[7][2])
 
         self.call_stack.pop()
         return self.call_stack
 
     def select_project(self, default: int = 1):
         projects = project_mod.list_projects(self.db_cursor)
-        project, status = self.select_from_options(projects, default)
-        return project, status
+        return self.select_from_options(projects, default)
 
 
 def main(stdscr):
