@@ -10,6 +10,7 @@ import json
 import os
 import re
 import sqlite3
+import psutil
 
 import matplotlib.pyplot as plt
 import pandas
@@ -134,6 +135,9 @@ def close_task(db, cursor: sqlite3.Cursor, id_: str):
 
     if quest:
         rpg_mod.close_quest(db, cursor, quest)
+
+    # for i3 integration
+    os.system('pkill -SIGRTMIN+10 i3blocks')
 
     return name
 
