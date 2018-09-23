@@ -387,7 +387,6 @@ def main():
 
     # list tasks
     elif args.subparser_name == 'list':
-        print("  Today tasks:")
         if not args.date:
             # by default, list overdue tasks too
             tasks = core.list_tasks(cursor, args.top, args.open, due_date=args.date)

@@ -84,8 +84,7 @@ class Tab:
         self.stdscr.refresh()
         self.character_window.refresh()
 
-    def draw_cursor(self, new_position: int, old_position: int):
-        offset = 3
+    def draw_cursor(self, new_position: int, old_position: int, offset: int = 3):
         self.main_window.addstr(offset + old_position, 0, ' ')
         self.main_window.addstr(offset + new_position, 0, '>')
         self.stdscr.refresh()
@@ -138,8 +137,10 @@ class Tab:
             choice = self.stdscr.getkey()
 
             if default is not None and choice == '':
+                self.message_window.clear()
                 return default
             elif choice in valid:
+                self.message_window.clear()
                 return valid[choice]
             else:
                 self.message_window.addstr(1, 1, "Please respond with 'y' or 'n'")
@@ -275,7 +276,61 @@ class ListTab(Tab):
 
 
 class DialogTab(Tab):
-    pass
+    def draw_main(self):
+        self.main_window.erase()
+        self.main_window.refresh()
+        self.stdscr.refresh()
+
+    def draw_commands(self):
+        self.draw_generic_commands([
+            [("j", "next"), ("k", "prev. (selection may not be available)"), ("", ""), ("", "")],
+            [("", ""), ("", ""), ("", ""), ("", "")],
+            [("", "^F: leave the rest of the fields on defaults"), ("", ""), ("", ""), ("", "ESC: cancel")],
+        ])
+
+    def select_from_options(self, options: list, default: int) -> tuple:
+        cursor = 0
+        status = "ok"
+        selection = default
+
+        # draw the options
+        self.main_window.erase()
+        line = 0
+        for option in options:
+            self.main_window.addstr(line, 2, option["name"])
+            line += 1
+
+        self.draw_cursor(cursor, 0, 0)
+        self.stdscr.refresh()
+        self.main_window.refresh()
+
+        # select
+        while True:
+            # wait for commands
+            c = self.stdscr.getch()
+
+            if c == ord("j"):
+                previous = cursor
+                cursor = (cursor + 1) % len(options)
+                self.draw_cursor(cursor, previous, 0)
+            elif c == ord("k"):
+                previous = cursor
+                cursor = (cursor - 1) % len(options)
+                self.draw_cursor(cursor, previous, 0)
+            elif c == curses.ascii.ESC or c == 27:
+                status = "cancel"
+                break
+            if c == curses.ascii.ACK:  # ^f
+                status = "finish"
+                break
+            elif c == ord("l"):
+                selection = options[cursor]["id"]
+                break
+
+        self.main_window.erase()
+        self.stdscr.refresh()
+        self.main_window.refresh()
+        return selection, status
 
 
 class HomeTab(Tab):
@@ -290,6 +345,7 @@ class HomeTab(Tab):
             "m": (ModifyTab, lambda: [self.task] if self.task else []),
             "s": (ReportTab, lambda: []),
             "n": (AddNoteTab, lambda: []),
+            "a": (AddTaskTab, lambda: [None]),
         }
 
         while True:
@@ -305,10 +361,7 @@ class HomeTab(Tab):
             self.message_window.clear()
 
             # process normal command
-            if c == 'a':
-                self.add_task()
-                self.redraw = True
-            elif c == 'c':
+            if c == 'c':
                 if not self.task:
                     self.print_message("No task to close")
                     continue
@@ -975,17 +1028,50 @@ class AddNoteTab(DialogTab):
         self.call_stack.pop()
         return self.call_stack
 
-    def draw_main(self):
-        self.main_window.erase()
-        self.main_window.refresh()
-        self.stdscr.refresh()
 
-    def draw_commands(self):
-        self.draw_generic_commands([
-            [("j", "next selection"), ("k", "prev. selection (selections may not be available)"), ("", ""), ("", "")],
-            [("", ""), ("", ""), ("", ""), ("", "")],
-            [("", "^F: leave the rest of the fields on defaults"), ("", ""), ("", ""), ("", "ESC: cancel")],
-        ])
+class AddTaskTab(DialogTab):
+    def open(self):
+        self.draw_all()
+
+        project = self.call_stack.top_arguments()[0]
+        params = [
+            ["Enter the task", self.get_input, "", lambda x: True, str],
+            ["Enter task weight (0.0 if left blank)", self.get_input, 0.0, lambda x: True, float],
+            ["Enter project", self.select_project, project, lambda x: True, int],
+            ["Enter task priority (0 if left blank)", self.get_input, 0, lambda x: True, int],
+            ["Enter due date (YYYY-MM-DD) (today if left blank)", self.get_input, "", core.validate_relative_date, str],
+            ["Enter due time (HH:MM) (00:00 if left blank)", self.get_input, "", core.validate_time, str],
+            ["Enter repetition period (no repetition if left blank)", self.get_input, "", core.validate_time_period,
+             str],
+            ["Enter related quest", self.get_input, None, lambda x: True, lambda x: x],
+        ]
+
+        for i, p in enumerate(params):
+            self.print_message(p[0] + ":")
+            text, status = p[1](p[2])
+            print(text)
+            if status == "cancel":
+                self.call_stack.pop()
+                return self.call_stack
+            if status == "finish":
+                break
+            if not p[3](text):
+                self.print_message("Wrong format. Aborted.")
+                self.call_stack.pop()
+                return self.call_stack
+            params[i][2] = p[4](text)
+            self.message_window.clear()
+
+        core.add_task(self.db, self.cursor, params[0][2], params[2][2], params[4][2], params[3][2], params[1][2],
+                      params[5][2], params[6][2], params[7][2])
+
+        self.call_stack.pop()
+        return self.call_stack
+
+    def select_project(self, default: int = 1):
+        projects = project_mod.list_projects(self.cursor)
+        project, status = self.select_from_options(projects, default)
+        return project, status
 
 
 def main(stdscr):
