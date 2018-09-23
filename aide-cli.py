@@ -70,10 +70,11 @@ def get_arguments():
     )
     parser_add.add_argument(
         '-d', '--date',
+        default="today",
         type=validate_relative_date,
         help="Due date. Excepted formats:"
              "YYYY-MM-DD"
-             "today"
+             "today [default]"
              "tomorrow"
              "'+X days'"
              "'+X months'"
@@ -348,7 +349,7 @@ def ask_confirmation(question, default="yes"):
 
 def close(db, cursor, id_):
     if not id_:
-        task = core.list_tasks(cursor, True)
+        task = core.list_tasks(cursor, True, due_date="today")
         if not task:
             print("No open tasks")
             return
@@ -363,7 +364,7 @@ def close(db, cursor, id_):
     else:
         print("Closed task: " + name)
         print("Next task:")
-        tasks = core.list_tasks(cursor, True, True, "")
+        tasks = core.list_tasks(cursor, True, due_date="today")
         print_tasks(tasks)
 
 

@@ -295,7 +295,7 @@ class HomeTab(Tab):
         while True:
             if self.redraw:
                 # retrieve the current task and update windows
-                self.task = core.list_tasks(self.cursor, True)
+                self.task = core.list_tasks(self.cursor, True, due_date="today")
                 self.task = self.task[0] if self.task else None
                 self.draw_all()
                 self.redraw = False
@@ -331,7 +331,7 @@ class HomeTab(Tab):
     def draw_main(self):
         self.main_window.erase()
         self.main_window.addstr(0, 1, "Current task:")
-        tasks = core.list_tasks(self.cursor, True)
+        tasks = core.list_tasks(self.cursor, True, due_date="today")
 
         if not tasks:
             self.main_window.addstr(4, (curses.COLS // 2) - 8, "No open tasks!")
@@ -372,11 +372,10 @@ class TaskListTab(ListTab):
         while True:
             if self.redraw:
                 self.tasks = core.list_tasks(self.cursor, False, exclude_closed_tasks=exclude_closed,
-                                             exclude_overdue_tasks=exclude_overdue)
+                                             exclude_overdue_tasks=exclude_overdue, due_date="today")
                 if not self.tasks:
                     self.print_message("No open tasks!")
 
-                # self.current = 0
                 self.selected_tasks.clear()
 
                 self.draw_all()
@@ -404,9 +403,11 @@ class TaskListTab(ListTab):
                 self.draw_selection(self.current, True)
             elif c == 'o':
                 exclude_overdue = True
+                self.current = 0
                 self.redraw = True
             elif c == 'c':
                 exclude_closed = False
+                self.current = 0
                 self.redraw = True
             elif c == 'a':
                 self.add_task()
@@ -845,7 +846,7 @@ class TaskListInProjectTab(TaskListTab):
         # wait for commands
         while True:
             if self.redraw:
-                self.tasks = core.list_tasks(self.cursor, project=self.project_id)
+                self.tasks = core.list_tasks(self.cursor, project=self.project_id, exclude_overdue_tasks=False)
 
                 self.draw_all()
                 self.draw_cursor(self.current, 0)
@@ -1002,7 +1003,7 @@ def main(stdscr):
     cursor = db.cursor()
 
     # prepare windows
-    main_window = curses.newwin(30, curses.COLS - 1, 1, 0)
+    main_window = curses.newwin(40, curses.COLS - 1, 1, 0)
     message_window = curses.newwin(3, curses.COLS - 1, curses.LINES - 9, 0)
     commands_window = curses.newwin(5, curses.COLS - 1, curses.LINES - 6, 0)
     progress_window = curses.newwin(3, 25, curses.LINES - 1, 0)

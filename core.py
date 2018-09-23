@@ -62,14 +62,9 @@ def list_tasks(cursor: sqlite3.Cursor, only_top_result: bool = False, exclude_cl
                 where_clauses.append("due_date=" + due_date)
             else:
                 where_clauses.append("due_date<=" + due_date)
-        else:
-            if exclude_overdue_tasks:
-                where_clauses.append("due_date = current_date")
-            else:
-                where_clauses.append("due_date <= current_date")
 
         query += " AND ".join(where_clauses)
-        query += " ORDER BY priority DESC"
+        query += " ORDER BY priority DESC LIMIT 35"
 
     # run the query and repack into a list of dictionaries
     cursor.execute(query, query_arguments)
