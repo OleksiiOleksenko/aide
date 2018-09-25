@@ -22,20 +22,44 @@ class CallStack(list):
         return self[-1][1]
 
 
+class Windows:
+    main = None
+    message = None
+    commands = None
+    progress = None
+    character = None
+
+    columns = 0
+    lines = 0
+
+    def __init__(self, stdscr):
+        self.stdscr = stdscr
+        self.lines, self.columns = self.stdscr.getmaxyx()
+
+    def draw(self):
+        lines, columns = self.stdscr.getmaxyx()
+
+        self.stdscr.clear()
+        self.main = curses.newwin(30, columns - 1, 1, 0)
+        self.message = curses.newwin(3, columns - 1, lines - 9, 0)
+        self.commands = curses.newwin(5, columns - 1, lines - 6, 0)
+        self.progress = curses.newwin(3, 25, lines - 1, 0)
+        self.character = curses.newwin(3, 42, lines - 1, columns - 42)
+        self.stdscr.refresh()
+
+        self.lines = lines
+        self.columns = columns
+
+
 class Tab:
     redraw: bool = True
 
-    def __init__(self, call_stack: CallStack, db: sqlite3.Connection, cursor: sqlite3.Cursor, stdscr,
-                 main_window, message_window, commands_window, progress_window, character_window):
+    def __init__(self, call_stack: CallStack, db: sqlite3.Connection, cursor: sqlite3.Cursor, stdscr, windows: Windows):
         self.call_stack = call_stack
         self.db = db
         self.db_cursor = cursor
         self.stdscr = stdscr
-        self.main_window = main_window
-        self.message_window = message_window
-        self.commands_window = commands_window
-        self.progress_window = progress_window
-        self.character_window = character_window
+        self.windows = windows
 
     def open(self) -> CallStack:
         pass
@@ -54,70 +78,70 @@ class Tab:
         pass
 
     def draw_generic_commands(self, commands):
-        self.commands_window.erase()
-        self.commands_window.box()
-        self.commands_window.addstr(0, (curses.COLS // 2) - 11, " Available commands ")
+        self.windows.commands.erase()
+        self.windows.commands.box()
+        self.windows.commands.addstr(0, (self.windows.columns // 2) - 11, " Available commands ")
 
         line = 1
         for row in commands:
             position = 2
             for c in row:
-                self.commands_window.addstr(line, position, c[0], curses.A_BOLD)
-                self.commands_window.addstr(line, position + 1, ":" + c[1] if c[1] else "")
+                self.windows.commands.addstr(line, position, c[0], curses.A_BOLD)
+                self.windows.commands.addstr(line, position + 1, ":" + c[1] if c[1] else "")
                 position += 20
             line += 1
 
         self.stdscr.refresh()
-        self.commands_window.refresh()
+        self.windows.commands.refresh()
 
     def draw_progress_bar(self):
         weight_total = core.get_total_weight(self.db_cursor)
         weight_current = core.get_total_weight(self.db_cursor, True)
-        self.progress_window.addstr(0, 0, "Progress: {:.2f} / {:.2f}".format(weight_current, weight_total))
+        self.windows.progress.addstr(0, 0, "Progress: {:.2f} / {:.2f}".format(weight_current, weight_total))
         self.stdscr.refresh()
-        self.progress_window.refresh()
+        self.windows.progress.refresh()
 
     def draw_character_bar(self):
         character = rpg_mod.get_character_stats(self.db_cursor)
-        self.character_window.addstr(0, 0, "Level: {:<3} | XP: {:>4} / {:<4} | Gold: {:<4}".format(
+        self.windows.character.addstr(0, 0, "Level: {:<3} | XP: {:>4} / {:<4} | Gold: {:<4}".format(
             character["level"], character["xp"], character["xp_for_next_level"], character["gold"]))
         self.stdscr.refresh()
-        self.character_window.refresh()
+        self.windows.character.refresh()
 
     def draw_cursor(self, new_position: int, old_position: int, offset: int = 3):
-        self.main_window.addstr(offset + old_position, 0, ' ')
-        self.main_window.addstr(offset + new_position, 0, '>')
+        self.windows.main.addstr(offset + old_position, 0, ' ')
+        self.windows.main.addstr(offset + new_position, 0, '>')
         self.stdscr.refresh()
-        self.main_window.refresh()
+        self.windows.main.refresh()
 
     def draw_selection(self, position: int, unselect=False):
         offset = 3
         if unselect:
-            self.main_window.addstr(offset + position, 1, ' ')
+            self.windows.main.addstr(offset + position, 1, ' ')
         else:
-            self.main_window.addstr(offset + position, 1, '*')
+            self.windows.main.addstr(offset + position, 1, '*')
         self.stdscr.refresh()
-        self.main_window.refresh()
+        self.windows.main.refresh()
 
     def resize(self):
         lines, cols = self.stdscr.getmaxyx()
         self.stdscr.clear()
-        self.main_window = curses.newwin(30, cols - 1, 1, 0)
-        self.message_window = curses.newwin(3, cols - 1, lines - 9, 0)
-        self.commands_window = curses.newwin(5, cols - 1, lines - 6, 0)
-        self.progress_window = curses.newwin(3, 25, lines - 1, 0)
-        self.character_window = curses.newwin(3, 42, lines - 1, cols - 42)
+        self.windows.main = curses.newwin(30, cols - 1, 1, 0)
+        self.windows.message = curses.newwin(3, cols - 1, lines - 9, 0)
+        self.windows.commands = curses.newwin(5, cols - 1, lines - 6, 0)
+        self.windows.progress = curses.newwin(3, 25, lines - 1, 0)
+        self.windows.character = curses.newwin(3, 42, lines - 1, cols - 42)
         self.stdscr.refresh()
 
     def print_message(self, text: str):
-        self.message_window.addstr(0, 1, text)
+        self.windows.message.addstr(0, 1, text)
         self.stdscr.refresh()
-        self.message_window.refresh()
+        self.windows.message.refresh()
 
     def print_help(self, text: str):
-        self.message_window.addstr(1, 1, text)
+        self.windows.message.addstr(1, 1, text)
         self.stdscr.refresh()
-        self.message_window.refresh()
+        self.windows.message.refresh()
 
     def ask_confirmation(self, text: str, default=True):
         valid = {"y": True, "n": False}
@@ -130,40 +154,40 @@ class Tab:
             prompt = " [y/N] "
 
         while True:
-            self.message_window.addstr(0, 1, text + prompt)
+            self.windows.message.addstr(0, 1, text + prompt)
             self.stdscr.refresh()
-            self.message_window.refresh()
+            self.windows.message.refresh()
 
             choice = self.stdscr.getkey()
 
             if default is not None and choice == '':
-                self.message_window.clear()
+                self.windows.message.clear()
                 return default
             elif choice in valid:
-                self.message_window.clear()
+                self.windows.message.clear()
                 return valid[choice]
             else:
-                self.message_window.addstr(1, 1, "Please respond with 'y' or 'n'")
+                self.windows.message.addstr(1, 1, "Please respond with 'y' or 'n'")
                 self.stdscr.refresh()
-                self.message_window.refresh()
+                self.windows.message.refresh()
 
     def clear_messages(self):
-        self.message_window.erase()
+        self.windows.message.erase()
         self.stdscr.refresh()
-        self.message_window.refresh()
+        self.windows.message.refresh()
 
     def get_input(self, default: str = "") -> (str, str):
-        self.message_window.move(2, 1)
+        self.windows.message.move(2, 1)
 
         s = ""
         status = "ok"
         while True:
-            self.message_window.deleteln()
-            self.message_window.addstr(2, 1, ">> " + s)
-            self.message_window.refresh()
+            self.windows.message.deleteln()
+            self.windows.message.addstr(2, 1, ">> " + s)
+            self.windows.message.refresh()
             self.stdscr.refresh()
 
-            c = self.message_window.getch()
+            c = self.windows.message.getch()
             if c == 27:
                 status = "cancel"
                 break
@@ -209,7 +233,7 @@ class Tab:
                 self.print_message("Wrong format. Aborted.")
                 return
             params[i][0] = p[3](text)
-            self.message_window.clear()
+            self.windows.message.clear()
 
         core.add_task(self.db, self.db_cursor, params[0][0], params[2][0], params[4][0], params[3][0], params[1][0],
                       params[5][0], params[6][0], params[7][0])
@@ -218,7 +242,7 @@ class Tab:
     def process_navigation_commands(self, command: str, navigation: dict, enable_return: bool = True):
         # handle resizing
         if command == "KEY_RESIZE":
-            self.resize()
+            self.windows.draw()
             self.redraw = True
             return False
 
@@ -245,22 +269,22 @@ class ListTab(Tab):
     priority_step = 10
 
     def draw_list(self, list_, columns_header: str, column_format: str, column_fields):
-        self.main_window.erase()
+        self.windows.main.erase()
 
         # table header
-        self.main_window.addstr(1, 1, "Name")
+        self.windows.main.addstr(1, 1, "Name")
         if columns_header:
-            self.main_window.addstr(1, curses.COLS - len(columns_header) - 1, columns_header)
-        self.main_window.hline(2, 0, curses.ACS_HLINE, curses.COLS - 1)
+            self.windows.main.addstr(1, self.windows.columns - len(columns_header) - 1, columns_header)
+        self.windows.main.hline(2, 0, curses.ACS_HLINE, self.windows.columns - 1)
 
         # list
         line = 3
         for element in list_:
-            self.main_window.addstr(line, 2, element["name"])
+            self.windows.main.addstr(line, 2, element["name"])
             if column_fields:
-                self.main_window.addstr(
+                self.windows.main.addstr(
                     line,
-                    curses.COLS - len(columns_header) - 1,
+                    self.windows.columns - len(columns_header) - 1,
                     column_format.format(*(element[f] for f in column_fields))
                 )
             line += 1
@@ -268,17 +292,17 @@ class ListTab(Tab):
         if not list_:
             line += 1
 
-        self.main_window.hline(line, 0, curses.ACS_HLINE, curses.COLS - 1)
+        self.windows.main.hline(line, 0, curses.ACS_HLINE, self.windows.columns - 1)
         line += 1
 
         self.stdscr.refresh()
-        self.main_window.refresh()
+        self.windows.main.refresh()
 
 
 class DialogTab(Tab):
     def draw_main(self):
-        self.main_window.erase()
-        self.main_window.refresh()
+        self.windows.main.erase()
+        self.windows.main.refresh()
         self.stdscr.refresh()
 
     def draw_commands(self):
@@ -297,15 +321,15 @@ class DialogTab(Tab):
         status = "ok"
 
         # draw the options
-        self.main_window.erase()
+        self.windows.main.erase()
         line = 0
         for option in options:
-            self.main_window.addstr(line, 2, option["name"])
+            self.windows.main.addstr(line, 2, option["name"])
             line += 1
 
         self.draw_cursor(cursor, 0, 0)
         self.stdscr.refresh()
-        self.main_window.refresh()
+        self.windows.main.refresh()
 
         # select
         while True:
@@ -329,9 +353,9 @@ class DialogTab(Tab):
             if c == curses.KEY_ENTER or c == 10 or c == 13:  # Enter
                 break
 
-        self.main_window.erase()
+        self.windows.main.erase()
         self.stdscr.refresh()
-        self.main_window.refresh()
+        self.windows.main.refresh()
         return options[cursor]["id"], status
 
 
@@ -360,7 +384,7 @@ class HomeTab(Tab):
 
             # wait for commands
             c = self.stdscr.getkey()
-            self.message_window.clear()
+            self.windows.message.clear()
 
             # process normal command
             if c == 'c':
@@ -384,23 +408,23 @@ class HomeTab(Tab):
                 return self.call_stack
 
     def draw_main(self):
-        self.main_window.erase()
-        self.main_window.addstr(0, 1, "Current task:")
+        self.windows.main.erase()
+        self.windows.main.addstr(0, 1, "Current task:")
         tasks = core.list_tasks(self.db_cursor, True, due_date="today")
 
         if not tasks:
-            self.main_window.addstr(4, (curses.COLS // 2) - 8, "No open tasks!")
+            self.windows.main.addstr(4, (self.windows.columns // 2) - 8, "No open tasks!")
             self.stdscr.refresh()
-            self.main_window.refresh()
+            self.windows.main.refresh()
             return
 
         top_task = tasks[0]
-        self.main_window.addstr(2, 2, ">> " + top_task["name"] + " <<", curses.A_BOLD)
-        self.main_window.addstr(3, 2, "Weight: {} | Priority : {} | ID: {} ".format(
+        self.windows.main.addstr(2, 2, ">> " + top_task["name"] + " <<", curses.A_BOLD)
+        self.windows.main.addstr(3, 2, "Weight: {} | Priority : {} | ID: {} ".format(
             top_task["weight"], top_task["priority"], top_task["id"]))
 
         self.stdscr.refresh()
-        self.main_window.refresh()
+        self.windows.main.refresh()
 
     def draw_commands(self):
         self.draw_generic_commands([
@@ -439,7 +463,7 @@ class TaskListTab(ListTab):
 
             # wait for commands
             c = self.stdscr.getkey()
-            self.message_window.clear()
+            self.windows.message.clear()
 
             # process the command
             if c == "j":
@@ -532,7 +556,7 @@ class QuestsListTab(ListTab):
 
             # wait for commands
             c = self.stdscr.getkey()
-            self.message_window.clear()
+            self.windows.message.clear()
 
             # process the command
             if c == "j":
@@ -579,21 +603,21 @@ class QuestsListTab(ListTab):
         name, status = self.get_input()
         if status == "cancel":
             return
-        self.message_window.clear()
+        self.windows.message.clear()
 
         self.print_message("Enter the awarded xp (0 if left blank):")
         xp, status = self.get_input()
         if status == "cancel":
             return
         xp = int(xp) if xp else 0
-        self.message_window.clear()
+        self.windows.message.clear()
 
         self.print_message("Enter the gold reward (0 if left blank):")
         gold, status = self.get_input()
         if status == "cancel":
             return
         gold = int(gold) if gold else 0
-        self.message_window.clear()
+        self.windows.message.clear()
 
         skills = rpg_mod.get_skills(self.db_cursor)
         skill_list = ", ".join([str(s["id"]) + ": " + s["name"] for s in skills])
@@ -605,7 +629,7 @@ class QuestsListTab(ListTab):
         if skill is None:
             return
         skill = int(skill) if skill else 0
-        self.message_window.clear()
+        self.windows.message.clear()
 
         rpg_mod.add_quest(self.db, self.db_cursor, name, xp, gold, skill)
         return True
@@ -660,7 +684,7 @@ class AwardsListTab(ListTab):
             return
         if name is None:
             return
-        self.message_window.clear()
+        self.windows.message.clear()
 
         self.print_message("Enter the award price (0 if left blank):")
         price, status = self.get_input()
@@ -669,7 +693,7 @@ class AwardsListTab(ListTab):
         if price is None:
             return
         price = int(price) if price else 0
-        self.message_window.clear()
+        self.windows.message.clear()
 
         rpg_mod.add_award(self.db, self.db_cursor, name, price)
         return True
@@ -710,7 +734,7 @@ class ProjectListTab(ListTab):
 
             # wait for commands
             c = self.stdscr.getkey()
-            self.message_window.clear()
+            self.windows.message.clear()
 
             # process the command
             if c == "j":
@@ -786,7 +810,7 @@ class ModifyTab(ListTab):
 
             # wait for commands
             c = self.stdscr.getkey()
-            self.message_window.clear()
+            self.windows.message.clear()
 
             # process the command
             if c == 'n':
@@ -916,7 +940,7 @@ class TaskListInProjectTab(TaskListTab):
                 self.redraw = False
 
             c = self.stdscr.getkey()
-            self.message_window.clear()
+            self.windows.message.clear()
 
             # process the command
             if c == "j":
@@ -985,7 +1009,7 @@ class ReportTab(ListTab):
 
             # wait for commands
             c = self.stdscr.getkey()
-            self.message_window.clear()
+            self.windows.message.clear()
 
             if c == "j":
                 previous = self.current
@@ -1034,7 +1058,7 @@ class AddNoteTab(DialogTab):
                 self.print_message("Wrong format. Aborted.")
                 return
             params[i][0] = p[3](text) if text else p[0]
-            self.message_window.clear()
+            self.windows.message.clear()
 
         core.add_note(self.db, self.db_cursor, params[1][0], params[0][0])
 
@@ -1053,7 +1077,8 @@ class AddTaskTab(DialogTab):
             ["Enter task weight (0.0 if left blank)", self.get_input, 0.0, lambda x: True, float],
             ["Enter project", self.select_project, project, lambda x: True, int],
             ["Enter task priority (0 if left blank)", self.get_input, 0, lambda x: True, int],
-            ["Enter due date (YYYY-MM-DD) (today if left blank)", self.get_input, date, core.validate_relative_date, str],
+            ["Enter due date (YYYY-MM-DD) (today if left blank)", self.get_input, date, core.validate_relative_date,
+             str],
             ["Enter due time (HH:MM) (00:00 if left blank)", self.get_input, "", core.validate_time, str],
             ["Enter repetition period (no repetition if left blank)", self.get_input, "", core.validate_time_period,
              str],
@@ -1073,7 +1098,7 @@ class AddTaskTab(DialogTab):
                 self.call_stack.pop()
                 return self.call_stack
             params[i][2] = p[4](text)
-            self.message_window.clear()
+            self.windows.message.clear()
 
         core.add_task(self.db, self.db_cursor, params[0][2], params[3][2], params[5][2], params[4][2], params[1][2],
                       params[6][2], params[2][2], params[7][2])
@@ -1101,19 +1126,15 @@ def main(stdscr):
     cursor = db.cursor()
 
     # prepare windows
-    main_window = curses.newwin(40, curses.COLS - 1, 1, 0)
-    message_window = curses.newwin(3, curses.COLS - 1, curses.LINES - 9, 0)
-    commands_window = curses.newwin(5, curses.COLS - 1, curses.LINES - 6, 0)
-    progress_window = curses.newwin(3, 25, curses.LINES - 1, 0)
-    character_window = curses.newwin(3, 42, curses.LINES - 1, curses.COLS - 42)
+    windows = Windows(stdscr)
+    windows.draw()
 
     call_stack = CallStack()
     call_stack.push(HomeTab, [])
 
     while not call_stack.is_empty():
         CurrentTab = call_stack.top_tab()
-        tab = CurrentTab(call_stack, db, cursor, stdscr,
-                         main_window, message_window, commands_window, progress_window, character_window)
+        tab = CurrentTab(call_stack, db, cursor, stdscr, windows)
         call_stack = tab.open()
 
 
