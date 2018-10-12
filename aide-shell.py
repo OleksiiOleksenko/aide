@@ -891,6 +891,15 @@ class ModifyTab(ListTab):
                     core.modify_task(self.db, self.db_cursor, id_=id_, repeat=repeat)
                     self.tasks[i]["repeat"] = repeat
                 self.redraw = True
+            elif c == 'm':
+                for i, id_ in enumerate(ids):
+                    if self.tasks[i]["name"].startswith("* "):
+                        new_name = self.tasks[i]["name"][2:]
+                    else:
+                        new_name = "* " + self.tasks[i]["name"]
+                    core.modify_task(self.db, self.db_cursor, id_=id_, name=new_name)
+                    self.tasks[i]["name"] = new_name
+                self.redraw = True
             elif c == "KEY_DC":
                 if self.ask_confirmation("Do you want to delete the tasks?"):
                     for i in ids:
@@ -913,7 +922,7 @@ class ModifyTab(ListTab):
         self.draw_generic_commands([
             [("n", "set name "), ("s", "set status"), ("p", "set priority"), ("w", "set weight")],
             [("t", "set due time"), ("d", "set due date"), ("e", "set repeat"), ("", "DEL: delete tasks")],
-            [("", ""), ("", ""), ("r", "return"), ("q", "quit")],
+            [("m", "toggle star"), ("", ""), ("r", "return"), ("q", "quit")],
         ])
 
 

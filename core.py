@@ -157,7 +157,7 @@ def add_note(db, cursor: sqlite3.Cursor, date: str, text: str):
     db.commit()
 
 
-def productivity_plot(cursor: sqlite3.Cursor, project_ids: list = None):
+def productivity_plot(cursor: sqlite3.Cursor, project_ids: list = None, interval: str = None):
     if not project_ids or project_ids == [None]:
         cursor.execute('SELECT sum(tasks.weight),tasks.due_date, projects.name FROM tasks '
                        'INNER JOIN projects ON tasks.project = projects.id '
@@ -184,6 +184,8 @@ def productivity_plot(cursor: sqlite3.Cursor, project_ids: list = None):
     dates = pandas.date_range(data[0][1], data[-1][1])
     df.index = pandas.DatetimeIndex(df.index)
     df = df.reindex(dates, fill_value=0)
+    if interval:
+        df = df.resample(interval).sum()
 
     # build the plot
     fig = plt.figure(figsize=(12, 1))
@@ -199,7 +201,6 @@ def productivity_plot(cursor: sqlite3.Cursor, project_ids: list = None):
     ax.yaxis.grid(True, linestyle=':', which='major')
     labels = ax.set_xticklabels([pandas_datetime.strftime("%Y-%m-%d") for pandas_datetime in df.index])
     plt.setp(labels, rotation=90)
-    ax.set_aspect(5.)
     plt.show()
 
     return True
