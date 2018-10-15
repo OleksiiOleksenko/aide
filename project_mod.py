@@ -7,8 +7,11 @@ def add_project(db, cursor: sqlite3.Cursor, name: str, priority: int):
     db.commit()
 
 
-def list_projects(cursor: sqlite3.Cursor):
-    query = "SELECT id, name, priority FROM projects ORDER BY priority DESC"
+def list_projects(cursor: sqlite3.Cursor, include_closed=False):
+    if not include_closed:
+        query = "SELECT id, name, priority FROM projects WHERE open=1 ORDER BY priority DESC"
+    else:
+        query = "SELECT id, name, priority FROM projects ORDER BY priority DESC"
     cursor.execute(query)
     projects = cursor.fetchall()
     return [{
