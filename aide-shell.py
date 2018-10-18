@@ -926,7 +926,10 @@ class ModifyTab(ListTab):
         ])
 
 
-class TaskListInProjectTab(TaskListTab):
+class TaskListInProjectTab(ListTab):
+    tasks = []
+    selected_tasks = set()
+    current = 0
     project_id = None
 
     def open(self):
@@ -968,12 +971,14 @@ class TaskListInProjectTab(TaskListTab):
                 self.redraw = True
             elif c == 'p':
                 task = self.tasks[self.current]
-                core.modify_task(self.db, self.db_cursor, task["id"], priority=task["priority"] + self.priority_step)
+                new_priority = task["priority_in_project"] + self.priority_step
+                core.modify_task(self.db, self.db_cursor, task["id"], priority_in_project=new_priority)
                 self.redraw = True
             elif c == 'P':
                 task = self.tasks[self.current]
-                new_priority = task["priority"] - self.priority_step if task["priority"] >= self.priority_step else 0
-                core.modify_task(self.db, self.db_cursor, task["id"], priority=new_priority)
+                new_priority = task["priority_in_project"] - self.priority_step \
+                    if task["priority_in_project"] >= self.priority_step else 0
+                core.modify_task(self.db, self.db_cursor, task["id"], priority_in_project=new_priority)
                 self.redraw = True
             elif c == 'g':
                 total, closed = project_mod.get_project_progress(self.db_cursor, self.project_id)
@@ -988,9 +993,17 @@ class TaskListInProjectTab(TaskListTab):
             if self.process_navigation_commands(c, navigation):
                 return self.call_stack
 
+    def draw_main(self):
+        self.draw_list(
+            self.tasks,
+            "|ST|PR |WGHT|Time |Date      ",
+            "|{0:<2}|{1:<3}|{2:<1.2f}|{3!s:5}|{4}",
+            ("status", "priority_in_project", "weight", "due_time", "due_date"),
+        )
+
     def draw_commands(self):
         self.draw_generic_commands([
-            [("j", "next"), ("k", "previous"), ("p", "higer prio."), ("P", "lower prio.")],
+            [("j", "next"), ("k", "previous"), ("p", "higer prj. prio."), ("P", "lower prj. prio.")],
             [("d", "today/no date"), ("c", "toggle status"), ("a", "add task"), ("m", "modify task")],
             [("g", "project progress"), ("", ""), ("r", "return"), ("q", "quit")],
         ])

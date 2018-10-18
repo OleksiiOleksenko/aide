@@ -37,7 +37,8 @@ def add_task(db, cursor: sqlite3.Cursor, name, priority, time, date, weight, rep
 
 def list_tasks(cursor: sqlite3.Cursor, only_top_result: bool = False, exclude_closed_tasks: bool = True,
                exclude_overdue_tasks: bool = False, due_date: str = None, project: int = None):
-    query = "SELECT id, name, priority, " + utc_to_local("due_time") + ", status, weight, due_date, project " \
+    query = "SELECT id, name, priority, " + utc_to_local("due_time") + ", status, weight, due_date, " \
+                                                                       "project, priority_in_project " \
                                                                        "FROM tasks WHERE "
     where_clauses = []
     query_arguments = []
@@ -65,7 +66,11 @@ def list_tasks(cursor: sqlite3.Cursor, only_top_result: bool = False, exclude_cl
                 where_clauses.append("due_date<=" + due_date)
 
         query += " AND ".join(where_clauses)
-        query += " ORDER BY priority DESC LIMIT 35"
+        if project:
+            query += " ORDER BY priority_in_project "
+        else:
+            query += " ORDER BY priority "
+        query += "DESC LIMIT 35"
 
     # run the query and repack into a list of dictionaries
     cursor.execute(query, query_arguments)
@@ -78,12 +83,14 @@ def list_tasks(cursor: sqlite3.Cursor, only_top_result: bool = False, exclude_cl
         "status": t[4],
         "weight": t[5],
         "due_date": t[6],
-        "project": t[7]
+        "project": t[7],
+        "priority_in_project": t[8]
     } for t in tasks]
 
 
 def modify_task(db, cursor: sqlite3.Cursor, id_: str, name: str = "", priority: int = -1, time: str = "",
-                weight: float = -1, repeat: str = "", due_date: str = "", status: int = -1, project: int = None):
+                weight: float = -1, repeat: str = "", due_date: str = "", status: int = -1, project: int = None,
+                priority_in_project: int = -1):
     setters = []
     query_arguments = []
 
@@ -118,6 +125,10 @@ def modify_task(db, cursor: sqlite3.Cursor, id_: str, name: str = "", priority: 
     if project:
         setters.append("project=?")
         query_arguments.append(project)
+
+    if priority_in_project >= 0:
+        setters.append("priority_in_project=?")
+        query_arguments.append(priority_in_project)
 
     query = "UPDATE tasks SET " + " AND ".join(setters) + " WHERE id = ?"
     query_arguments.append(id_)
