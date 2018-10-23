@@ -727,7 +727,7 @@ class ProjectListTab(ListTab):
 
         while True:
             if self.redraw:
-                self.projects = project_mod.list_projects(self.db_cursor)
+                self.projects = project_mod.list_projects(self.db_cursor, open_projects=True)
 
                 self.draw_all()
                 self.draw_cursor(0, 0)
