@@ -7,17 +7,21 @@ def add_project(db, cursor: sqlite3.Cursor, name: str, priority: int):
     db.commit()
 
 
-def list_projects(cursor: sqlite3.Cursor, include_closed=False):
-    if not include_closed:
-        query = "SELECT id, name, priority FROM projects WHERE open=1 ORDER BY priority DESC"
+def list_projects(cursor: sqlite3.Cursor, open_projects: bool = None):
+    if open_projects is None:
+        query = "SELECT id, name, priority, 0 FROM projects ORDER BY priority DESC"
     else:
-        query = "SELECT id, name, priority FROM projects ORDER BY priority DESC"
+        query = "SELECT projects.id, projects.name, projects.priority, sum(tasks.weight) FROM projects " \
+                "INNER JOIN tasks ON tasks.project = projects.id " \
+                "WHERE open=%d GROUP BY tasks.project ORDER BY projects.priority DESC" \
+                % (int(open_projects))
     cursor.execute(query)
     projects = cursor.fetchall()
     return [{
         "id": p[0],
         "name": p[1],
         "priority": p[2],
+        "total": p[3]
     } for p in projects]
 
 

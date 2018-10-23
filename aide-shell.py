@@ -721,6 +721,7 @@ class ProjectListTab(ListTab):
     def open(self):
         navigation = {
             "l": (TaskListInProjectTab, lambda: [self.projects[self.current_project]["id"], 0]),
+            "h": (HallOfFameTab, lambda: []),
         }
         self.redraw = True
 
@@ -790,6 +791,42 @@ class ProjectListTab(ListTab):
         self.draw_generic_commands([
             [("j", "next project"), ("k", "previous project"), ("", ""), ("", "")],
             [("l", "list tasks"), ("e", "set priority"), ("a", "add project"), ("", "")],
+            [("h", "hall of fame"), ("", ""), ("r", "return"), ("q", "quit")],
+        ])
+
+
+class HallOfFameTab(ListTab):
+    projects = []
+
+    def open(self):
+        navigation = {}
+
+        while True:
+            if self.redraw:
+                self.projects = project_mod.list_projects(self.db_cursor, open_projects=False)
+
+                self.draw_all()
+                self.draw_cursor(0, 0)
+
+            # wait for commands
+            c = self.stdscr.getkey()
+            self.windows.message.clear()
+
+            if self.process_navigation_commands(c, navigation):
+                return self.call_stack
+
+    def draw_main(self):
+        self.draw_list(
+            self.projects,
+            "|Total weight",
+            "|{:<8}",
+            ("total",),
+        )
+
+    def draw_commands(self):
+        self.draw_generic_commands([
+            [("", ""), ("", ""), ("", ""), ("", "")],
+            [("", ""), ("", ""), ("", ""), ("", "")],
             [("", ""), ("", ""), ("r", "return"), ("q", "quit")],
         ])
 
