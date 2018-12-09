@@ -1082,6 +1082,10 @@ class ReportTab(ListTab):
                 status = core.productivity_plot(self.db_cursor, [self.projects[self.current]["id"]])
                 if not status:
                     self.print_message("Not enough data to build a plot!")
+            elif c == 'w':
+                status = core.productivity_plot(self.db_cursor, [self.projects[self.current]["id"]], interval='W')
+                if not status:
+                    self.print_message("Not enough data to build a plot!")
 
             if self.process_navigation_commands(c, navigation):
                 return self.call_stack
@@ -1092,7 +1096,7 @@ class ReportTab(ListTab):
     def draw_commands(self):
         self.draw_generic_commands([
             [("j", "next project"), ("k", "previous project"), ("", ""), ("", "")],
-            [("d", "draw plot"), ("", ""), ("", ""), ("", "")],
+            [("d", "draw plot"), ("w", "weekly plot"), ("", ""), ("", "")],
             [("", ""), ("", ""), ("r", "return"), ("q", "quit")],
         ])
 
