@@ -728,6 +728,11 @@ class ProjectListTab(ListTab):
         while True:
             if self.redraw:
                 self.projects = project_mod.list_projects(self.db_cursor, open_projects=True)
+                for p in self.projects:
+                    if p["priority"] > 50:
+                        p["name"] = "* " + p["name"]
+                    elif p["priority"] == 0:
+                        p["name"] = "- " + p["name"]
 
                 self.draw_all()
                 self.draw_cursor(0, 0)
