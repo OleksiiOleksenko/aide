@@ -47,7 +47,7 @@ def list_tasks(cursor: sqlite3.Cursor, only_top_result: bool = False, exclude_cl
     if only_top_result:
         query += "status=1 AND" \
                  " (due_time < current_time OR due_time IS NULL) AND due_date <= current_date " \
-                 " ORDER BY priority DESC " \
+                 " ORDER BY priority DESC, id DESC " \
                  " LIMIT 1"
     else:
         if exclude_closed_tasks:
@@ -67,10 +67,10 @@ def list_tasks(cursor: sqlite3.Cursor, only_top_result: bool = False, exclude_cl
 
         query += " AND ".join(where_clauses)
         if project:
-            query += " ORDER BY priority_in_project "
+            query += " ORDER BY priority_in_project DESC, id DESC "
         else:
-            query += " ORDER BY priority "
-        query += "DESC LIMIT 35"
+            query += " ORDER BY priority DESC, id DESC "
+        query += "LIMIT 35"
 
     # run the query and repack into a list of dictionaries
     cursor.execute(query, query_arguments)

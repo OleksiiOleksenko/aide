@@ -41,7 +41,7 @@ class Windows:
         lines, columns = self.stdscr.getmaxyx()
 
         self.stdscr.clear()
-        self.main = curses.newwin(30, columns - 1, 1, 0)
+        self.main = curses.newwin(40, columns - 1, 1, 0)
         self.message = curses.newwin(3, columns - 1, lines - 9, 0)
         self.commands = curses.newwin(5, columns - 1, lines - 6, 0)
         self.progress = curses.newwin(3, 25, lines - 1, 0)
@@ -486,11 +486,11 @@ class TaskListTab(ListTab):
                     self.selected_tasks.discard(self.current)
                     self.draw_selection(self.current, True)
             elif c == 'o':
-                exclude_overdue = True
+                exclude_overdue = not exclude_overdue
                 self.current = 0
                 self.redraw = True
             elif c == 'f':
-                exclude_closed = False
+                exclude_closed = not exclude_closed
                 self.current = 0
                 self.redraw = True
             elif c == 'a':
@@ -528,7 +528,7 @@ class TaskListTab(ListTab):
         self.draw_generic_commands([
             [("j", "next task"), ("k", "previous task"), ("s", "toggle selection"), ("c", "toggle status")],
             [("a", "add task"), ("m", "modify selected"), ("p", "increase prio."), ("P", "decrease prio.")],
-            [("o", "exclude overdue"), ("f", "include finished"), ("r", "return"), ("q", "quit")],
+            [("o", "toggle overdue"), ("f", "toggle finished"), ("r", "return"), ("q", "quit")],
         ])
 
     def call_modify(self):
@@ -987,11 +987,13 @@ class TaskListInProjectTab(ListTab):
             "a": (AddTaskTab, lambda: ["no", self.project_id]),
         }
         self.redraw = True
+        closed = True
 
         # wait for commands
         while True:
             if self.redraw:
-                self.tasks = core.list_tasks(self.db_cursor, project=self.project_id, exclude_overdue_tasks=False)
+                self.tasks = core.list_tasks(self.db_cursor, project=self.project_id, exclude_overdue_tasks=False,
+                                             exclude_closed_tasks=closed)
 
                 self.draw_all()
                 self.draw_cursor(self.current, 0)
@@ -1035,6 +1037,9 @@ class TaskListInProjectTab(ListTab):
                 else:
                     core.modify_task(self.db, self.db_cursor, self.tasks[self.current]["id"], status=1)
                 self.redraw = True
+            elif c == 'l':
+                closed = not closed
+                self.redraw = True
 
             if self.process_navigation_commands(c, navigation):
                 return self.call_stack
@@ -1051,7 +1056,7 @@ class TaskListInProjectTab(ListTab):
         self.draw_generic_commands([
             [("j", "next"), ("k", "previous"), ("p", "higer prj. prio."), ("P", "lower prj. prio.")],
             [("d", "today/no date"), ("c", "toggle status"), ("a", "add task"), ("m", "modify task")],
-            [("g", "project progress"), ("", ""), ("r", "return"), ("q", "quit")],
+            [("g", "project progress"), ("l", "toggle closed"), ("r", "return"), ("q", "quit")],
         ])
 
     def call_modify(self):
