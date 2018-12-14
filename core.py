@@ -47,7 +47,7 @@ def list_tasks(cursor: sqlite3.Cursor, only_top_result: bool = False, exclude_cl
     if only_top_result:
         query += "status=1 AND" \
                  " (due_time < current_time OR due_time IS NULL) AND due_date <= current_date " \
-                 " ORDER BY priority DESC " \
+                 " ORDER BY priority DESC, id DESC " \
                  " LIMIT 1"
     else:
         if exclude_closed_tasks:
