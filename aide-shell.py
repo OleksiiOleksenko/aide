@@ -586,9 +586,9 @@ class QuestsListTab(ListTab):
     def draw_main(self):
         self.draw_list(
             self.quests,
-            "|XP |Gold",
-            "|{:<3}|{:<4}",
-            ("xp", "gold"),
+            "|XP |Will.|Time",
+            "|{:<3}|{:<5}|{:<4}",
+            ("xp", "will", "time"),
         )
 
     def draw_commands(self):

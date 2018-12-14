@@ -2,24 +2,25 @@ import sqlite3
 
 
 def add_quest(db, cursor: sqlite3.Cursor, name: str, xp: int, gold_reward: int, trained_skill: int):
-    cursor.execute("INSERT INTO quests(name, xp, gold_reward, trained_skill) VALUES (?, ?, ?, ?)",
+    cursor.execute("INSERT INTO quests(name, xp, willingness, trained_skill) VALUES (?, ?, ?, ?)",
                    (name, xp, gold_reward, trained_skill))
     db.commit()
 
 
 def get_quests(cursor: sqlite3.Cursor):
-    cursor.execute("SELECT id, xp, gold_reward, name FROM quests")
+    cursor.execute("SELECT id, xp, willingness, time, name FROM quests")
     quests = cursor.fetchall()
     return [{
         "id": q[0],
         "xp": q[1],
-        "gold": q[2],
-        "name": q[3]
+        "will": q[2],
+        "time": q[3],
+        "name": q[4]
     } for q in quests]
 
 
 def close_quest(db, cursor: sqlite3.Cursor, id_: str):
-    cursor.execute("SELECT name, xp, gold_reward, trained_skill FROM quests WHERE id = ?", (id_,))
+    cursor.execute("SELECT name, xp, willingness, trained_skill, time FROM quests WHERE id = ?", (id_,))
     quest = cursor.fetchone()
     if not quest:
         return
@@ -37,7 +38,10 @@ def close_quest(db, cursor: sqlite3.Cursor, id_: str):
             "UPDATE character SET level = level + 1, xp_for_next_level = ? WHERE id = 1", (next_level,))
 
     # update xp and gold
-    cursor.execute("UPDATE character SET xp = xp + ?, gold = gold + ? WHERE id = 1", (quest[1], quest[2]))
+    will = int(quest[2])
+    time = int(quest[4])
+    gold = ((10 - will) // 2) * time
+    cursor.execute("UPDATE character SET xp = xp + ?, gold = gold + ? WHERE id = 1", (quest[1], gold))
 
     # increase the skill
     cursor.execute("SELECT name, value, xp FROM skills WHERE id = ?", (quest[3],))
