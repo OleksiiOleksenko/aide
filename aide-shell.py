@@ -2,6 +2,7 @@
 import curses
 import curses.ascii
 import sqlite3
+import datetime
 
 import core
 import rpg_mod
@@ -96,8 +97,11 @@ class Tab:
 
     def draw_progress_bar(self):
         weight_total = core.get_total_weight(self.db_cursor)
-        weight_current = core.get_total_weight(self.db_cursor, True)
-        self.windows.progress.addstr(0, 0, "Progress: {:.2f} / {:.2f}".format(weight_current, weight_total))
+        weight_current = core.get_total_weight(self.db_cursor, True, False)
+        weight_week = core.get_total_weight(self.db_cursor, False, True)
+        weight_week /= (datetime.datetime.today().weekday() + 1)
+        self.windows.progress.addstr(0, 0, "Progress: {:.2f} [{:.2f}] / {:.2f}"
+                                     .format(weight_current, weight_week, weight_total))
         self.stdscr.refresh()
         self.windows.progress.refresh()
 
