@@ -44,7 +44,7 @@ class Windows:
         self.main = curses.newwin(40, columns - 1, 1, 0)
         self.message = curses.newwin(3, columns - 1, lines - 9, 0)
         self.commands = curses.newwin(5, columns - 1, lines - 6, 0)
-        self.progress = curses.newwin(3, 25, lines - 1, 0)
+        self.progress = curses.newwin(3, 29, lines - 1, 0)
         self.character = curses.newwin(3, 42, lines - 1, columns - 42)
         self.stdscr.refresh()
 

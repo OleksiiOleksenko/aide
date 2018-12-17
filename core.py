@@ -221,7 +221,7 @@ def get_total_weight(cursor: sqlite3.Cursor, closed=False, week_total=False):
     if closed:
         query = "SELECT sum(weight) FROM tasks WHERE due_date=current_date AND status=0 GROUP BY due_date"
     elif week_total:
-        query = "SELECT sum(weight) FROM tasks WHERE date(due_date) >= date('now', 'weekday 1', '-7 days') AND status=0"
+        query = "SELECT sum(weight) FROM tasks WHERE date(due_date) > date('now', 'weekday 0', '-7 days') AND status=0"
     else:
         query = "SELECT sum(weight) FROM tasks WHERE due_date=current_date GROUP BY due_date"
     query_arguments = []
