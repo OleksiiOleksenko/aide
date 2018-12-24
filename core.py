@@ -227,7 +227,7 @@ def get_total_weight(cursor: sqlite3.Cursor, closed=False, week_total=False):
     query_arguments = []
 
     result = cursor.execute(query, query_arguments).fetchone()
-    return result[0] if result else 0.0
+    return float(result[0]) if result and result[0] else 0.0
 
 
 def relative_date_to_sql_query(date: str):
