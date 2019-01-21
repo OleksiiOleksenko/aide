@@ -985,6 +985,7 @@ class TaskListInProjectTab(ListTab):
         navigation = {
             "m": (ModifyTab, self.call_modify),
             "a": (AddTaskTab, lambda: ["no", self.project_id]),
+            "s": (AddTaskQuickTab, lambda: ["no", self.project_id]),
         }
         self.redraw = True
         closed = True
@@ -1084,7 +1085,7 @@ class TaskListInProjectTab(ListTab):
         self.draw_generic_commands([
             [("j", "next"), ("k", "previous"), ("p", "higer prj. prio."), ("P", "lower prj. prio.")],
             [("d", "today/no date"), ("c", "toggle status"), ("a", "add task"), ("m", "modify task")],
-            [("g", "project progress"), ("l", "toggle closed"), ("r", "return"), ("q", "quit")],
+            [("s", "quick add"), ("l", "toggle closed"), ("r", "return"), ("q", "quit")],
         ])
 
     def call_modify(self):
@@ -1214,6 +1215,27 @@ class AddTaskTab(DialogTab):
     def select_project(self, default: int = 1):
         projects = project_mod.list_projects(self.db_cursor)
         return self.select_from_options(projects, default)
+
+
+class AddTaskQuickTab(DialogTab):
+    def open(self):
+        self.draw_all()
+
+        date = self.call_stack.top_arguments()[0]
+        project = self.call_stack.top_arguments()[1]
+
+        self.print_message("Enter the task:")
+        text, status = self.get_input("")
+        if status == "cancel":
+            self.call_stack.pop()
+            return self.call_stack
+        text = str(text)
+        self.windows.message.clear()
+
+        core.add_task(self.db, self.db_cursor, text, 0, "", date, 0, project=project)
+
+        self.call_stack.pop()
+        return self.call_stack
 
 
 def main(stdscr):
