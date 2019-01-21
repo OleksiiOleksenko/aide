@@ -1018,16 +1018,44 @@ class TaskListInProjectTab(ListTab):
                     core.modify_task(self.db, self.db_cursor, self.tasks[self.current]["id"], due_date="today")
                 self.redraw = True
             elif c == 'p':
-                task = self.tasks[self.current]
-                new_priority = task["priority_in_project"] + self.priority_step
-                core.modify_task(self.db, self.db_cursor, task["id"], priority_in_project=new_priority)
-                self.redraw = True
+                if self.current == 0:
+                    task = self.tasks[self.current]
+                    new_priority = task["order_in_project"] - self.priority_step \
+                        if task["order_in_project"] != 0 else 0
+                    core.modify_task(self.db, self.db_cursor, task["id"], order_in_project=new_priority)
+                    self.redraw = True
+                else:
+                    this_task = self.tasks[self.current]
+                    higher_task = self.tasks[self.current - 1]
+                    new_priority_this = higher_task["order_in_project"]
+                    new_priority_higher = this_task["order_in_project"]
+                    if new_priority_this == new_priority_higher:
+                        new_priority_this -= 1
+                    core.modify_task(self.db, self.db_cursor, this_task["id"], order_in_project=new_priority_this)
+                    core.modify_task(self.db, self.db_cursor, higher_task["id"],
+                                     order_in_project=new_priority_higher)
+                    self.current -= 1
+                    self.redraw = True
             elif c == 'P':
-                task = self.tasks[self.current]
-                new_priority = task["priority_in_project"] - self.priority_step \
-                    if task["priority_in_project"] >= self.priority_step else 0
-                core.modify_task(self.db, self.db_cursor, task["id"], priority_in_project=new_priority)
                 self.redraw = True
+                if self.current == len(self.tasks) - 1:
+                    task = self.tasks[self.current]
+                    new_priority = task["order_in_project"] + self.priority_step
+                    core.modify_task(self.db, self.db_cursor, task["id"], order_in_project=new_priority)
+                    self.redraw = True
+                else:
+                    this_task = self.tasks[self.current]
+                    higher_task = self.tasks[self.current + 1]
+                    new_priority_this = higher_task["order_in_project"]
+                    new_priority_higher = this_task["order_in_project"]
+                    if new_priority_this == new_priority_higher:
+                        new_priority_this += 1
+                    core.modify_task(self.db, self.db_cursor, this_task["id"], order_in_project=new_priority_this)
+                    core.modify_task(self.db, self.db_cursor, higher_task["id"],
+                                     order_in_project=new_priority_higher)
+                    self.current += 1
+                    self.redraw = True
+
             elif c == 'g':
                 total, closed = project_mod.get_project_progress(self.db_cursor, self.project_id)
                 self.print_message("Project progress: {} / {}".format(closed, total))
@@ -1049,7 +1077,7 @@ class TaskListInProjectTab(ListTab):
             self.tasks,
             "|ST|PR |WGHT|Time |Date      ",
             "|{0:<2}|{1:<3}|{2:<1.2f}|{3!s:5}|{4}",
-            ("status", "priority_in_project", "weight", "due_time", "due_date"),
+            ("status", "order_in_project", "weight", "due_time", "due_date"),
         )
 
     def draw_commands(self):

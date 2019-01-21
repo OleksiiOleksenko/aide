@@ -22,7 +22,7 @@ BEGIN
 END;
 
 
-CREATE TRIGGER "repeat_task_workdays"
+CREATE TRIGGER "main"."repeat_task_workdays"
     AFTER UPDATE
     ON tasks
     FOR EACH ROW WHEN (old.status = 1 AND new.status = 0 AND old.repeat_period is not null AND old.repeat_period == 'workdays')
