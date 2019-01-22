@@ -4,6 +4,7 @@ import curses.ascii
 import sqlite3
 import datetime
 
+import curses_editor
 import core
 import rpg_mod
 import project_mod
@@ -946,6 +947,19 @@ class ModifyTab(ListTab):
                     core.modify_task(self.db, self.db_cursor, id_=id_, name=new_name)
                     self.tasks[i]["name"] = new_name
                 self.redraw = True
+            if c == 'x':
+                if len(self.tasks) != 1:
+                    self.print_message("Not supported action!")
+                    continue
+                editor = curses_editor.Editor(self.stdscr, box=False,
+                                              win_size=(self.windows.lines, self.windows.columns - 1),
+                                              win_location=(5, 5),
+                                              inittext=self.tasks[0]["note"])
+                text = editor()
+                self.stdscr.clear()
+                core.add_note_to_task(self.db, self.db_cursor, self.tasks[0]["id"], text)
+                self.redraw = True
+
             elif c == "KEY_DC":
                 if self.ask_confirmation("Do you want to delete the tasks?"):
                     for i in ids:
@@ -968,7 +982,7 @@ class ModifyTab(ListTab):
         self.draw_generic_commands([
             [("n", "set name "), ("s", "set status"), ("p", "set priority"), ("w", "set weight")],
             [("t", "set due time"), ("d", "set due date"), ("e", "set repeat"), ("", "DEL: delete tasks")],
-            [("m", "toggle star"), ("", ""), ("r", "return"), ("q", "quit")],
+            [("m", "toggle star"), ("x", "edit note"), ("r", "return"), ("q", "quit")],
         ])
 
 

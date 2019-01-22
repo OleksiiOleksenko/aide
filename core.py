@@ -38,7 +38,7 @@ def add_task(db, cursor: sqlite3.Cursor, name, priority, time, date, weight, rep
 def list_tasks(cursor: sqlite3.Cursor, only_top_result: bool = False, exclude_closed_tasks: bool = True,
                exclude_overdue_tasks: bool = False, due_date: str = None, project: int = None):
     query = "SELECT id, name, priority, " + utc_to_local("due_time") + ", status, weight, due_date, " \
-                                                                       "project, order_in_project " \
+                                                                       "project, order_in_project, note " \
                                                                        "FROM tasks WHERE "
     where_clauses = []
     query_arguments = []
@@ -84,7 +84,8 @@ def list_tasks(cursor: sqlite3.Cursor, only_top_result: bool = False, exclude_cl
         "weight": t[5],
         "due_date": t[6],
         "project": t[7],
-        "order_in_project": t[8]
+        "order_in_project": t[8],
+        "note": t[9]
     } for t in tasks]
 
 
@@ -134,6 +135,11 @@ def modify_task(db, cursor: sqlite3.Cursor, id_: str, name: str = "", priority: 
     query_arguments.append(id_)
 
     cursor.execute(query, query_arguments)
+    db.commit()
+
+
+def add_note_to_task(db, cursor: sqlite3.Cursor, id_: str, text: str):
+    cursor.execute("UPDATE tasks SET note=? WHERE id = ?", [text, id_])
     db.commit()
 
 
