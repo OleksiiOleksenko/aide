@@ -36,7 +36,8 @@ def add_task(db, cursor: sqlite3.Cursor, name, priority, time, date, weight, rep
 
 
 def list_tasks(cursor: sqlite3.Cursor, only_top_result: bool = False, exclude_closed_tasks: bool = True,
-               exclude_overdue_tasks: bool = False, due_date: str = None, project: int = None):
+               exclude_overdue_tasks: bool = False, due_date: str = None, project: int = None,
+               exclude_regular: bool = True):
     query = "SELECT id, name, priority, " + utc_to_local("due_time") + ", status, weight, due_date, " \
                                                                        "project, order_in_project, note " \
                                                                        "FROM tasks WHERE "
@@ -45,8 +46,10 @@ def list_tasks(cursor: sqlite3.Cursor, only_top_result: bool = False, exclude_cl
 
     # parametrize the query
     if only_top_result:
-        query += "status=1 AND" \
-                 " (due_time < current_time OR due_time IS NULL) AND due_date <= current_date " \
+        query += "status=1 AND " \
+                 "((due_time IS NULL AND due_date <= current_date) OR " \
+                 "(due_time < current_time AND due_date = current_date) OR " \
+                 "(due_date < current_date)) " \
                  " ORDER BY priority DESC, id DESC " \
                  " LIMIT 1"
     else:
@@ -64,6 +67,9 @@ def list_tasks(cursor: sqlite3.Cursor, only_top_result: bool = False, exclude_cl
                 where_clauses.append("due_date=" + due_date)
             else:
                 where_clauses.append("due_date<=" + due_date)
+
+        if exclude_regular and project != 19:
+            where_clauses.append("project!=19")
 
         query += " AND ".join(where_clauses)
         if project:
