@@ -149,14 +149,14 @@ def add_note_to_task(db, cursor: sqlite3.Cursor, id_: str, text: str):
     db.commit()
 
 
-def close_task(db, cursor: sqlite3.Cursor, id_: str):
+def close_task(db, cursor: sqlite3.Cursor, id_: str, quest_executed: bool = True):
     cursor.execute("SELECT name, quest FROM tasks WHERE id = ?", (id_,))
     name, quest = cursor.fetchone()
 
     cursor.execute("UPDATE tasks SET status=0 WHERE id = ?", (id_,))
     db.commit()
 
-    if quest:
+    if quest and quest_executed:
         rpg_mod.close_quest(db, cursor, quest)
 
     # for i3 integration

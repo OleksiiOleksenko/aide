@@ -400,13 +400,13 @@ class HomeTab(Tab):
                 if self.ask_confirmation("Do you want to close the current task?"):
                     core.close_task(self.db, self.db_cursor, self.task["id"])
                     self.redraw = True
-            elif c == "KEY_DC":
+            elif c == "e":
                 if not self.task:
-                    self.print_message("No task to delete")
+                    self.print_message("No task to close")
                     continue
 
-                if self.ask_confirmation("Do you want to delete the current task?"):
-                    core.delete_task(self.db, self.db_cursor, self.task["id"])
+                if self.ask_confirmation("Do you want to cancel the current task?"):
+                    core.close_task(self.db, self.db_cursor, self.task["id"], quest_executed=False)
                     self.redraw = True
 
             if self.process_navigation_commands(c, navigation, enable_return=False):
@@ -433,7 +433,7 @@ class HomeTab(Tab):
 
     def draw_commands(self):
         self.draw_generic_commands([
-            [("a", "add task"), ("m", "modify current"), ("c", "close current"), ("", "DEL: delete current")],
+            [("a", "add task"), ("m", "modify current"), ("c", "close current"), ("e", "cancel current")],
             [("l", "list tasks"), ("n", "add note"), ("s", "show reports"), ("p", "projects")],
             [("u", "quests"), ("w", "awards"), ("", ""), ("q", "quit")],
         ])
