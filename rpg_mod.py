@@ -41,6 +41,8 @@ def close_quest(db, cursor: sqlite3.Cursor, id_: str):
     will = int(quest[2])
     time = int(quest[4])
     gold = ((10 - will) // 2) * time
+    if levelup:
+        gold += 100
     cursor.execute("UPDATE character SET xp = xp + ?, gold = gold + ? WHERE id = 1", (quest[1], gold))
 
     # increase the skill
