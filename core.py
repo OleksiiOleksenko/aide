@@ -119,7 +119,7 @@ def modify_task(db, cursor: sqlite3.Cursor, id_: str, name: str = "", priority: 
 
     if repeat:
         setters.append("repeat_period=?")
-        query_arguments.append("+" + repeat)
+        query_arguments.append(repeat)
 
     if due_date:
         due_date = relative_date_to_sql_query(due_date)
