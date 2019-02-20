@@ -294,7 +294,7 @@ def print_tasks(tasks: list, verbose=True):
 
     # only the name of the task
     if not verbose and len(tasks) == 1:
-        print(tasks[0]["name"])
+        print("%s [%d]" % (tasks[0]["name"], tasks[0]["weight"]))
         return
 
     # description of a single task

@@ -408,6 +408,12 @@ class HomeTab(Tab):
                 if self.ask_confirmation("Do you want to cancel the current task?"):
                     core.close_task(self.db, self.db_cursor, self.task["id"], quest_executed=False)
                     self.redraw = True
+            elif c == 'i':
+                if not self.task:
+                    self.print_message("No task to modify")
+                    continue
+                core.modify_task(self.db, self.db_cursor, id_=self.task["id"], weight=self.task["weight"] + 1)
+                self.redraw = True
 
             if self.process_navigation_commands(c, navigation, enable_return=False):
                 return self.call_stack
@@ -434,8 +440,8 @@ class HomeTab(Tab):
     def draw_commands(self):
         self.draw_generic_commands([
             [("a", "add task"), ("m", "modify current"), ("c", "close current"), ("e", "cancel current")],
-            [("l", "list tasks"), ("n", "add note"), ("s", "show reports"), ("p", "projects")],
-            [("u", "quests"), ("w", "awards"), ("", ""), ("q", "quit")],
+            [("l", "list tasks"), ("n", "add note"), ("i", "incr. weight"), ("p", "projects")],
+            [("u", "quests"), ("w", "awards"), ("s", "show reports"), ("q", "quit")],
         ])
 
 
